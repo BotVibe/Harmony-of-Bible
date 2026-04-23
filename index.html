@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Die Harmonie der Bibel - 63.779 Querverweise</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Top Control Panel -->
+        <header id="control-panel">
+            <div class="control-group">
+                <label for="book-filter">Buch:</label>
+                <select id="book-filter">
+                    <option value="all">Alle Bücher</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="distance-filter">Distanz (Kapitel):</label>
+                <input type="range" id="distance-filter" min="0" max="1189" value="1189">
+                <span id="distance-value">1189</span>
+            </div>
+            <div class="control-group filter-buttons" id="testament-filters">
+                <button data-filter="all" class="active">Alle</button>
+                <button data-filter="ot">Nur AT</button>
+                <button data-filter="nt">Nur NT</button>
+                <button data-filter="cross">AT ↔ NT</button>
+            </div>
+            <div class="control-group filter-buttons" id="group-filters">
+                <select id="group-filter">
+                    <option value="all">Alle Gruppen</option>
+                <option value="Tora">Tora</option>
+                    <option value="Historische Bücher">Historische Bücher</option>
+                    <option value="Poetische Bücher">Poetische Bücher</option>
+                    <option value="Propheten">Propheten</option>
+                    <option value="Evangelien">Evangelien</option>
+                    <option value="Briefe">Briefe</option>
+                    <option value="Offenbarung">Offenbarung</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <input type="text" id="search-input" placeholder="Suchen (z.B. Joh 3)">
+            </div>
+            <div class="control-group">
+                <button id="reset-zoom">Reset Zoom</button>
+            </div>
+            <div class="control-group">
+                <button id="lang-toggle">EN</button>
+            </div>
+            <div class="control-group">
+                <button id="update-data">Update Data</button>
+            </div>
+        </header>
+
+        <!-- Main Visualization Area -->
+        <main id="viz-container">
+            <!-- Loading Indicator -->
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+                <div id="loading-text">Lade Daten (0%)...</div>
+            </div>
+
+            <!-- Tooltip -->
+            <div id="tooltip" class="hidden"></div>
+
+            <!-- Legend -->
+            <div id="legend">
+                <div class="legend-gradient"></div>
+                <div class="legend-labels">
+                    <span>Nah</span>
+                    <span>Weit</span>
+                </div>
+            </div>
+
+            <!-- Canvas wrapper -->
+            <div id="canvas-wrapper">
+                <canvas id="viz-canvas"></canvas>
+            </div>
+        </main>
+
+        <!-- Sidebar Statistics -->
+        <aside id="sidebar" class="collapsed">
+            <div class="sidebar-toggle" id="sidebar-toggle">◀</div>
+            <div class="sidebar-content">
+                <h2>Statistik</h2>
+                <div class="stat-box">
+                    <div class="stat-label">Sichtbare Querverweise</div>
+                    <div class="stat-value" id="stat-visible-arcs">0</div>
+                </div>
+
+                <div class="stat-section">
+                    <h3>Verteilung</h3>
+                    <div id="donut-chart"></div>
+                </div>
+
+                <div class="stat-section">
+                    <h3>Top 10 Bücher</h3>
+                    <div id="top-books-chart"></div>
+                </div>
+
+                <div class="stat-section">
+                    <h3>Top 10 Kapitel</h3>
+                    <div id="top-chapters-chart"></div>
+                </div>
+
+                <div class="chapter-details hidden" id="chapter-details">
+                    <h3>Kapitel Details</h3>
+                    <div id="chapter-info"></div>
+                    <ul id="chapter-links-list"></ul>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/dataLoader.js"></script>
+    <script src="js/search.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
