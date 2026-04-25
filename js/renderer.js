@@ -167,6 +167,35 @@ class Renderer {
 
             return true;
         });
+        this.buildSpatialIndex();
+    }
+
+    buildSpatialIndex() {
+        if (!this.visibleArcs || !this.chapterPositions || this.chapterPositions.length === 0) return;
+
+        const GRID_SIZE = 50;
+        this.arcSpatialIndex = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => []));
+
+        const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
+        this.spatialMaxR = maxR;
+
+        this.visibleArcs.forEach(arc => {
+            const p1 = this.chapterPositions[arc.source].centerX;
+            const p2 = this.chapterPositions[arc.target].centerX;
+
+            const midX = (p1 + p2) / 2;
+            const rX = Math.abs(p2 - p1) / 2;
+
+            let binX = Math.floor((midX / this.width) * GRID_SIZE);
+            if (binX < 0) binX = 0;
+            if (binX >= GRID_SIZE) binX = GRID_SIZE - 1;
+
+            let binY = Math.floor((rX / maxR) * GRID_SIZE);
+            if (binY < 0) binY = 0;
+            if (binY >= GRID_SIZE) binY = GRID_SIZE - 1;
+
+            this.arcSpatialIndex[binX][binY].push(arc);
+        });
     }
 
     getArcColor(distance) {
@@ -349,57 +378,86 @@ class Renderer {
     }
 
     getArcAtScreenPos(mouseX, mouseY) {
-        if (this.visibleArcs.length === 0 || this.chapterPositions.length === 0) return null;
+        if (!this.visibleArcs || this.visibleArcs.length === 0 || !this.chapterPositions || this.chapterPositions.length === 0) return null;
+        if (!this.arcSpatialIndex) return null;
 
-        // Transform screen to world
         const worldX = (mouseX - this.transform.x) / this.transform.k;
         const worldY = (mouseY - this.transform.y) / this.transform.k;
 
         const bottomY = this.height - 40;
-
-        // If below the axis, no arcs
         if (worldY > bottomY) return null;
 
-        // We check arcs backwards to get the one "on top"
-        const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
-
-        // Tolerate 3-5 screen pixels for hover
+        const maxR = this.spatialMaxR || (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
+        const C = (bottomY - 20) / maxR;
         const threshold = 5 / this.transform.k;
+
+        const dy = worldY - bottomY;
+        const D2 = (dy / C) * (dy / C);
+
+        const GRID_SIZE = 50;
+        const binWidth = this.width / GRID_SIZE;
+        const binHeight = maxR / GRID_SIZE;
+
+        const rxTolerance = threshold / Math.min(1, C) + 2; // +2 for safety
 
         let closestArc = null;
         let minDistance = Infinity;
 
-        for (let i = this.visibleArcs.length - 1; i >= 0; i--) {
-            const arc = this.visibleArcs[i];
-            const p1 = this.chapterPositions[arc.source].centerX;
-            const p2 = this.chapterPositions[arc.target].centerX;
+        // Iterate over X bins to find matching Y bins
+        for (let binX = 0; binX < GRID_SIZE; binX++) {
+            const m0 = binX * binWidth;
+            const m1 = m0 + binWidth;
 
-            const midX = (p1 + p2) / 2;
-            const rX = Math.abs(p2 - p1) / 2;
-            const rY = Math.max((rX / maxR) * (bottomY - 20), 1);
+            let closestMidX = worldX;
+            if (worldX < m0) closestMidX = m0;
+            else if (worldX > m1) closestMidX = m1;
 
-            // Check bounding box first
-            if (worldX < midX - rX - threshold || worldX > midX + rX + threshold) continue;
-            if (worldY < bottomY - rY - threshold) continue; // higher than top of ellipse
+            const farthestMidX = Math.abs(worldX - m0) > Math.abs(worldX - m1) ? m0 : m1;
 
-            // Calculate distance to ellipse perimeter
-            // Equation of ellipse: (x-cx)^2 / rx^2 + (y-cy)^2 / ry^2 = 1
-            // We can approximate by transforming point to unit circle
-            const dx = (worldX - midX) / rX;
-            const dy = (worldY - bottomY) / rY;
-            const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+            const idealRxMin = Math.sqrt((closestMidX - worldX) ** 2 + D2);
+            const idealRxMax = Math.sqrt((farthestMidX - worldX) ** 2 + D2);
 
-            // Distance from perimeter in "normalized" space
-            const normDist = Math.abs(distFromCenter - 1);
+            const minRx = idealRxMin - rxTolerance;
+            const maxRx = idealRxMax + rxTolerance;
 
-            // If it's close to perimeter (thickness depends on rX and rY but roughly we can check)
-            // A precise point-to-ellipse distance is complex, but scaling normDist by min(rX, rY) gives an approx
-            const approxPixelDist = normDist * Math.min(rX, rY);
+            let startBinY = Math.floor(minRx / binHeight) - 1;
+            let endBinY = Math.floor(maxRx / binHeight) + 1;
 
-            if (approxPixelDist < threshold) {
-                if (approxPixelDist < minDistance) {
-                    minDistance = approxPixelDist;
-                    closestArc = arc;
+            if (startBinY < 0) startBinY = 0;
+            if (endBinY >= GRID_SIZE) endBinY = GRID_SIZE - 1;
+
+            if (startBinY > GRID_SIZE - 1 || endBinY < 0) continue;
+
+            for (let binY = startBinY; binY <= endBinY; binY++) {
+                const arcsInBin = this.arcSpatialIndex[binX][binY];
+                if (!arcsInBin) continue;
+
+                // Process arcs exactly as before to find the closest match
+                for (let i = arcsInBin.length - 1; i >= 0; i--) {
+                    const arc = arcsInBin[i];
+                    const p1 = this.chapterPositions[arc.source].centerX;
+                    const p2 = this.chapterPositions[arc.target].centerX;
+
+                    const midX = (p1 + p2) / 2;
+                    const rX = Math.abs(p2 - p1) / 2;
+                    const rY = Math.max((rX / maxR) * (bottomY - 20), 1);
+
+                    if (worldX < midX - rX - threshold || worldX > midX + rX + threshold) continue;
+                    if (worldY < bottomY - rY - threshold) continue;
+
+                    const arcDx = (worldX - midX) / rX;
+                    const arcDy = (worldY - bottomY) / rY;
+                    const distFromCenter = Math.sqrt(arcDx * arcDx + arcDy * arcDy);
+
+                    const normDist = Math.abs(distFromCenter - 1);
+                    const approxPixelDist = normDist * Math.min(rX, rY);
+
+                    if (approxPixelDist < threshold) {
+                        if (approxPixelDist < minDistance) {
+                            minDistance = approxPixelDist;
+                            closestArc = arc;
+                        }
+                    }
                 }
             }
         }
