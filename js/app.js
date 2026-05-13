@@ -218,10 +218,12 @@ class App {
         const sBookName = this.lang === 'de' ? sCh.bookNameDE : sCh.bookName;
         const tBookName = this.lang === 'de' ? tCh.bookNameDE : tCh.bookName;
 
-        this.tooltip.innerHTML = `
-            <strong>${sBookName} ${sCh.chapterNum} ↔ ${tBookName} ${tCh.chapterNum}</strong><br>
-            Distanz: ${arc.distance} Kapitel
-        `;
+        this.tooltip.textContent = '';
+        const strong = document.createElement('strong');
+        strong.textContent = `${sBookName} ${sCh.chapterNum} ↔ ${tBookName} ${tCh.chapterNum}`;
+        this.tooltip.appendChild(strong);
+        this.tooltip.appendChild(document.createElement('br'));
+        this.tooltip.appendChild(document.createTextNode(`Distanz: ${arc.distance} Kapitel`));
         this.tooltip.style.left = x + 'px';
         this.tooltip.style.top = (y - 50) + 'px';
         this.tooltip.classList.remove('hidden');
@@ -231,11 +233,14 @@ class App {
         const ch = this.data.chapters[idx];
         const bookName = this.lang === 'de' ? ch.bookNameDE : ch.bookName;
 
-        this.tooltip.innerHTML = `
-            <strong>${bookName} ${ch.chapterNum}</strong><br>
-            Verse: ${ch.verses}<br>
-            Querverweise: ${ch.arcsCount}
-        `;
+        this.tooltip.textContent = '';
+        const strong = document.createElement('strong');
+        strong.textContent = `${bookName} ${ch.chapterNum}`;
+        this.tooltip.appendChild(strong);
+        this.tooltip.appendChild(document.createElement('br'));
+        this.tooltip.appendChild(document.createTextNode(`Verse: ${ch.verses}`));
+        this.tooltip.appendChild(document.createElement('br'));
+        this.tooltip.appendChild(document.createTextNode(`Querverweise: ${ch.arcsCount}`));
         this.tooltip.style.left = x + 'px';
         this.tooltip.style.top = y - 20 + 'px';
         this.tooltip.classList.remove('hidden');
@@ -257,7 +262,14 @@ class App {
         const list = document.getElementById('chapter-links-list');
 
         const bookName = this.lang === 'de' ? ch.bookNameDE : ch.bookName;
-        info.innerHTML = `<strong>${bookName} ${ch.chapterNum}</strong><br>Verse: ${ch.verses}<br>Verweise: ${ch.arcsCount}`;
+        info.textContent = '';
+        const strongInfo = document.createElement('strong');
+        strongInfo.textContent = `${bookName} ${ch.chapterNum}`;
+        info.appendChild(strongInfo);
+        info.appendChild(document.createElement('br'));
+        info.appendChild(document.createTextNode(`Verse: ${ch.verses}`));
+        info.appendChild(document.createElement('br'));
+        info.appendChild(document.createTextNode(`Verweise: ${ch.arcsCount}`));
 
         list.innerHTML = '';
 
