@@ -16,7 +16,7 @@ class StatsCharts {
 
     renderDonut(data, bookMap) {
         const container = document.getElementById('donut-chart');
-        container.innerHTML = '';
+        container.textContent = '';
         if (data.arcs.length === 0) return;
 
         let otOt = 0, ntNt = 0, otNt = 0;
@@ -70,7 +70,7 @@ class StatsCharts {
 
     renderTopBooks(data, bookMap) {
         const container = document.getElementById('top-books-chart');
-        container.innerHTML = '';
+        container.textContent = '';
         if (data.arcs.length === 0) return;
 
         const counts = {};
@@ -94,7 +94,7 @@ class StatsCharts {
 
     renderTopChapters(data) {
         const container = document.getElementById('top-chapters-chart');
-        container.innerHTML = '';
+        container.textContent = '';
         if (data.arcs.length === 0) return;
 
         const counts = {};
