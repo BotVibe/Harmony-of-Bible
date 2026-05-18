@@ -307,3 +307,13 @@ canvas:active {
 #chapter-links-list li:hover {
     color: var(--accent);
 }
+
+.error-text {
+    color: var(--accent);
+    font-size: 0.8rem;
+    margin-left: 8px;
+}
+
+.hidden {
+    display: none !important;
+}
