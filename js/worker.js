@@ -35,7 +35,11 @@ self.onmessage = function(e) {
 
         // Helper function for color
         function getArcColor(distance) {
-            const norm = Math.min(distance / 1189, 1);
+            if (typeof distance !== 'number' || isNaN(distance)) {
+                return 'hsla(0, 0%, 50%, ';
+            }
+            const validDistance = Math.max(0, distance);
+            const norm = Math.min(validDistance / 1189, 1);
             let hue;
             if (norm < 0.1) hue = 270 - (norm / 0.1) * 30;
             else if (norm < 0.4) hue = 240 - ((norm - 0.1) / 0.3) * 180;

@@ -12,6 +12,14 @@ function testGetArcColor() {
         { distance: 832.3, expected: 'hsla(30, 100%, 50%, ' }, // 70% -> (70-40)/60 * 60 = 30; 60-30=30
         { distance: 1189, expected: 'hsla(0, 100%, 50%, ' }, // 100%
         { distance: 2000, expected: 'hsla(0, 100%, 50%, ' }, // > 100%
+
+        // Edge cases and error conditions
+        { distance: -50, expected: 'hsla(270, 100%, 50%, ' }, // Negative numbers treated as 0
+        { distance: NaN, expected: 'hsla(0, 0%, 50%, ' },
+        { distance: undefined, expected: 'hsla(0, 0%, 50%, ' },
+        { distance: null, expected: 'hsla(0, 0%, 50%, ' },
+        { distance: '100', expected: 'hsla(0, 0%, 50%, ' }, // String instead of number
+        { distance: {}, expected: 'hsla(0, 0%, 50%, ' }, // Object
     ];
 
     let allPassed = true;
@@ -20,15 +28,21 @@ function testGetArcColor() {
     testCases.forEach(tc => {
         const actual = Renderer.getArcColor(tc.distance);
 
-        // Handle floating point precision for the hue
-        const match = actual.match(/hsla\(([\d.]+), 100%, 50%, /);
-        const expectedMatch = tc.expected.match(/hsla\(([\d.]+), 100%, 50%, /);
-
         let pass = false;
-        if (match && expectedMatch) {
-            const hue = parseFloat(match[1]);
-            const expectedHue = parseFloat(expectedMatch[1]);
-            pass = Math.abs(hue - expectedHue) < 0.0001;
+
+        // Handle exact matches (like fallback colors)
+        if (actual === tc.expected) {
+            pass = true;
+        } else {
+            // Handle floating point precision for the hue
+            const match = actual.match(/hsla\(([\d.]+), 100%, 50%, /);
+            const expectedMatch = tc.expected.match(/hsla\(([\d.]+), 100%, 50%, /);
+
+            if (match && expectedMatch) {
+                const hue = parseFloat(match[1]);
+                const expectedHue = parseFloat(expectedMatch[1]);
+                pass = Math.abs(hue - expectedHue) < 0.0001;
+            }
         }
 
         if (!pass) {
