@@ -55,7 +55,6 @@ class DataLoader {
                 totalVerses: this.totalVerses
             };
         } catch (err) {
-            console.error('Error loading data:', err);
             throw err;
         }
     }
