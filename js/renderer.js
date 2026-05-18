@@ -199,8 +199,13 @@ class Renderer {
     }
 
     static getArcColor(distance) {
-        // Normalised distance 0 - 1189
-        const norm = Math.min(distance / 1189, 1);
+        if (typeof distance !== 'number' || isNaN(distance)) {
+            return 'hsla(0, 0%, 50%, ';
+        }
+
+        // Normalised distance 0 - 1189, handle negative distances
+        const validDistance = Math.max(0, distance);
+        const norm = Math.min(validDistance / 1189, 1);
 
         // HSL from 270 (Purple) to 0 (Red)
         // 0-10% -> 270 to 240 (Purple to Blue)
