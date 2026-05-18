@@ -33,6 +33,19 @@ Since the application uses Web Workers and fetches data asynchronously, it must 
    ```
 3. Open your browser and navigate to `http://localhost:8000`.
 
+## Testing
+
+The project includes a Node.js unit test suite for the core visualization logic.
+
+To run the unit tests:
+```bash
+node tests/renderer.test.js
+```
+
+## Deployment
+
+The application is automatically deployed to GitHub Pages via GitHub Actions whenever changes are pushed or merged into the `main` branch.
+
 ## Data Structure
 
 The application expects data in the `/data` folder:

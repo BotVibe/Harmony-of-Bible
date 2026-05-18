@@ -198,7 +198,7 @@ class Renderer {
         });
     }
 
-    getArcColor(distance) {
+    static getArcColor(distance) {
         // Normalised distance 0 - 1189
         const norm = Math.min(distance / 1189, 1);
 
@@ -279,12 +279,12 @@ class Renderer {
 
                 if (isHovering && !isArcFocus) {
                     // Dim non-focused arcs
-                    this.ctx.strokeStyle = this.getArcColor(arc.distance) + '0.02)';
+                    this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + '0.02)';
                 } else if (isArcFocus) {
-                    this.ctx.strokeStyle = this.getArcColor(arc.distance) + '1.0)';
+                    this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + '1.0)';
                     this.ctx.lineWidth = (focusChapter !== null ? 1.5 : 2.0) / k;
                 } else {
-                    this.ctx.strokeStyle = this.getArcColor(arc.distance) + baseAlpha + ')';
+                    this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + baseAlpha + ')';
                 }
 
                 const p1 = this.chapterPositions[arc.source].centerX;
@@ -465,4 +465,8 @@ class Renderer {
         return closestArc;
     }
 }
-window.Renderer = Renderer;
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Renderer;
+} else {
+    window.Renderer = Renderer;
+}
