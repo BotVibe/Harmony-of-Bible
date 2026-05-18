@@ -31,7 +31,8 @@ class DataLoader {
                         testament: book.testament,
                         group: book.group,
                         verseOffset: verseOffset,
-                        arcsCount: 0
+                        arcsCount: 0,
+                        connectedArcs: []
                     });
                     chapterId++;
                     verseOffset += ch.verses;
@@ -116,14 +117,18 @@ class DataLoader {
                         this.chapters[start].arcsCount++;
                         this.chapters[end].arcsCount++;
 
-                        arcs.push({
+                        const arc = {
                             id: idCounter++,
                             source: start,
                             target: end,
                             distance: dist,
                             sourceText: parts[0],
                             targetText: parts[1]
-                        });
+                        };
+
+                        arcs.push(arc);
+                        this.chapters[start].connectedArcs.push(arc);
+                        this.chapters[end].connectedArcs.push(arc);
                     }
                 }
             }
@@ -132,4 +137,8 @@ class DataLoader {
         return arcs;
     }
 }
-window.DataLoader = DataLoader;
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DataLoader;
+} else {
+    window.DataLoader = DataLoader;
+}
