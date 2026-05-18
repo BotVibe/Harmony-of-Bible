@@ -75,20 +75,6 @@ class DataLoader {
             return null;
         };
 
-        // Helper to find chapter index
-        const getChapterIndex = (parsedRef) => {
-            if (!parsedRef) return -1;
-            // Find the chapter in our flat array
-            // This could be optimized with a lookup map
-            for (let i = 0; i < this.chapters.length; i++) {
-                const ch = this.chapters[i];
-                if (ch.shortName === parsedRef.bookShort && ch.chapterNum === parsedRef.chapter) {
-                    return i;
-                }
-            }
-            return -1;
-        };
-
         // Optimize lookup by creating a map "BookShort.Chapter" -> chapterIndex
         const chapterLookup = new Map();
         this.chapters.forEach((ch, idx) => {
