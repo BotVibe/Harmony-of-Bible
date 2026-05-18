@@ -8,12 +8,13 @@ class StatsCharts {
     }
 
     render(data) {
-        this.renderDonut(data);
-        this.renderTopBooks(data);
+        const bookMap = new Map(data.books.map(b => [b.id, b]));
+        this.renderDonut(data, bookMap);
+        this.renderTopBooks(data, bookMap);
         this.renderTopChapters(data);
     }
 
-    renderDonut(data) {
+    renderDonut(data, bookMap) {
         const container = document.getElementById('donut-chart');
         container.innerHTML = '';
         if (data.arcs.length === 0) return;
@@ -22,8 +23,8 @@ class StatsCharts {
         data.arcs.forEach(arc => {
             const sCh = data.chapters[arc.source];
             const tCh = data.chapters[arc.target];
-            const sTest = data.books.find(b => b.id === sCh.bookId).testament;
-            const tTest = data.books.find(b => b.id === tCh.bookId).testament;
+            const sTest = bookMap.get(sCh.bookId).testament;
+            const tTest = bookMap.get(tCh.bookId).testament;
 
             if (sTest === 'OT' && tTest === 'OT') otOt++;
             else if (sTest === 'NT' && tTest === 'NT') ntNt++;
@@ -67,7 +68,7 @@ class StatsCharts {
             .text(d => d.data.label);
     }
 
-    renderTopBooks(data) {
+    renderTopBooks(data, bookMap) {
         const container = document.getElementById('top-books-chart');
         container.innerHTML = '';
         if (data.arcs.length === 0) return;
@@ -82,7 +83,7 @@ class StatsCharts {
 
         const sorted = Object.entries(counts)
             .map(([id, count]) => {
-                const b = data.books.find(b => b.id == id);
+                const b = bookMap.get(Number(id));
                 return { name: b ? b.shortName : id, count };
             })
             .sort((a, b) => b.count - a.count)
