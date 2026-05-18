@@ -75,7 +75,6 @@ book_data = [
 ]
 
 books_json = []
-book_short_map = {} # For normalising shortnames from data
 for idx, b in enumerate(book_data):
     book = {
         "id": idx + 1,
@@ -87,21 +86,6 @@ for idx, b in enumerate(book_data):
         "chapters": [{"chapter": c+1, "verses": v} for c, v in enumerate(b[5])]
     }
     books_json.append(book)
-    book_short_map[b[1]] = b[1]
-
-# Special cases from openbible formatting
-book_short_map.update({
-    "Sg": "Song", "Ezra": "Ezra", "Neh": "Neh", "Esth": "Esth", "Job": "Job",
-    "1Sam": "1Sam", "2Sam": "2Sam", "1Kgs": "1Kgs", "2Kgs": "2Kgs", "1Chr": "1Chr", "2Chr": "2Chr",
-    "Prov": "Prov", "Eccl": "Eccl", "Song": "Song", "Isa": "Isa", "Jer": "Jer", "Lam": "Lam",
-    "Ezek": "Ezek", "Dan": "Dan", "Hos": "Hos", "Joel": "Joel", "Amos": "Amos", "Obad": "Obad",
-    "Jonah": "Jonah", "Mic": "Mic", "Nah": "Nah", "Hab": "Hab", "Zeph": "Zeph", "Hag": "Hag",
-    "Zech": "Zech", "Mal": "Mal", "Matt": "Matt", "Mark": "Mark", "Luke": "Luke", "John": "John",
-    "Acts": "Acts", "Rom": "Rom", "1Cor": "1Cor", "2Cor": "2Cor", "Gal": "Gal", "Eph": "Eph",
-    "Phil": "Phil", "Col": "Col", "1Thess": "1Thess", "2Thess": "2Thess", "1Tim": "1Tim",
-    "2Tim": "2Tim", "Titus": "Titus", "Phlm": "Phlm", "Heb": "Heb", "Jas": "Jas", "1Pet": "1Pet",
-    "2Pet": "2Pet", "1John": "1John", "2John": "2John", "3John": "3John", "Jude": "Jude", "Rev": "Rev"
-})
 
 with open("data/books.json", "w", encoding="utf-8") as f:
     json.dump(books_json, f, indent=2, ensure_ascii=False)
