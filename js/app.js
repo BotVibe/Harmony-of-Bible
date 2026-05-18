@@ -290,7 +290,7 @@ class App {
         list.textContent = '';
 
         // Find all arcs connected to this chapter
-        const connectedArcs = this.data.arcs.filter(a => a.source === idx || a.target === idx);
+        const connectedArcs = this.data.chapters[idx].connectedArcs;
 
         // Group by target chapter
         connectedArcs.forEach(arc => {
