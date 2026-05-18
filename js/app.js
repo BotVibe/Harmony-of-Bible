@@ -11,6 +11,7 @@ class App {
         this.tooltip = document.getElementById('tooltip');
         this.sidebarToggle = document.getElementById('sidebar-toggle');
         this.sidebar = document.getElementById('sidebar');
+        this.searchError = document.getElementById('search-error');
 
         this.lang = 'de'; // Default language
 
@@ -92,10 +93,15 @@ class App {
                         this.sidebar.classList.remove('collapsed');
                         this.sidebarToggle.textContent = '▶';
                     }
+                    this.hideSearchError();
                 } else {
-                    alert('Kapitel nicht gefunden.');
+                    this.showSearchError(this.lang === 'de' ? 'Kapitel nicht gefunden.' : 'Chapter not found.');
                 }
             }
+        });
+
+        searchInput.addEventListener('input', () => {
+            this.hideSearchError();
         });
 
         document.getElementById('lang-toggle').addEventListener('click', (e) => {
@@ -111,6 +117,7 @@ class App {
             if (this.renderer.pinnedChapter !== null) {
                 this.updateSidebarForChapter(this.renderer.pinnedChapter);
             }
+            this.hideSearchError();
         });
 
         this.sidebarToggle.addEventListener('click', () => {
@@ -248,6 +255,15 @@ class App {
     updateStats() {
         document.getElementById('stat-visible-arcs').textContent = this.data.arcs.length.toLocaleString();
         this.stats.render(this.data);
+    }
+
+    showSearchError(message) {
+        this.searchError.textContent = message;
+        this.searchError.classList.remove('hidden');
+    }
+
+    hideSearchError() {
+        this.searchError.classList.add('hidden');
     }
 
     updateSidebarForChapter(idx) {
