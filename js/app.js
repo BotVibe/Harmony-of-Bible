@@ -287,7 +287,7 @@ class App {
         info.appendChild(document.createElement('br'));
         info.appendChild(document.createTextNode(`Verweise: ${ch.arcsCount}`));
 
-        list.innerHTML = '';
+        list.textContent = '';
 
         // Find all arcs connected to this chapter
         const connectedArcs = this.data.arcs.filter(a => a.source === idx || a.target === idx);
