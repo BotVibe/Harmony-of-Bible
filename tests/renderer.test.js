@@ -136,6 +136,100 @@ function testGetBinYBounds() {
     }
 }
 
+
+/**
+ * Tests for Renderer.getChapterAtScreenPos
+ */
+function testGetChapterAtScreenPos() {
+    console.log('\n--- getChapterAtScreenPos Unit Tests ---');
+
+    // We need to mock document and d3 for the constructor
+    global.document = {
+        getElementById: () => ({
+            getContext: () => ({
+                scale: () => {},
+                fillRect: () => {},
+                clearRect: () => {},
+                save: () => {},
+                restore: () => {},
+                translate: () => {},
+                beginPath: () => {},
+                ellipse: () => {},
+                stroke: () => {}
+            }),
+            parentElement: { getBoundingClientRect: () => ({ width: 1000, height: 500 }), insertBefore: () => {} },
+            style: {}
+        }),
+        createElement: () => ({
+            getContext: () => ({}),
+            style: {},
+            transferControlToOffscreen: () => ({})
+        })
+    };
+    global.window = { addEventListener: () => {} };
+    global.d3 = { zoomIdentity: { x: 0, y: 0, k: 1 } };
+    global.Worker = class { postMessage() {} };
+
+    const mockData = {
+        totalVerses: 100,
+        chapters: [],
+        arcs: []
+    };
+    const renderer = new Renderer('canvas', mockData);
+
+    let allPassed = true;
+
+    // Test 1: Empty chapterPositions
+    renderer.chapterPositions = [];
+    if (renderer.getChapterAtScreenPos(100) === null) {
+        console.log('✅ PASSED: returned null for empty chapterPositions');
+    } else {
+        console.error('❌ FAILED: did not return null for empty chapterPositions');
+        allPassed = false;
+    }
+
+    // Mock chapter positions for further tests
+    renderer.chapterPositions = [
+        { x: 10, width: 20 },  // chapter 0: 10 to 30
+        { x: 40, width: 20 },  // chapter 1: 40 to 60
+        { x: 70, width: 20 }   // chapter 2: 70 to 90
+    ];
+
+    // Test 2: Exact match (k=1, x=0)
+    renderer.transform = { x: 0, k: 1, y: 0 };
+    if (renderer.getChapterAtScreenPos(15) === 0 && renderer.getChapterAtScreenPos(50) === 1) {
+        console.log('✅ PASSED: returned correct index for exact match without transform');
+    } else {
+        console.error('❌ FAILED: incorrect index for exact match without transform');
+        allPassed = false;
+    }
+
+    // Test 3: Out of bounds
+    if (renderer.getChapterAtScreenPos(5) === null && renderer.getChapterAtScreenPos(35) === null && renderer.getChapterAtScreenPos(100) === null) {
+        console.log('✅ PASSED: returned null for out of bounds points');
+    } else {
+        console.error('❌ FAILED: did not return null for out of bounds points');
+        allPassed = false;
+    }
+
+    // Test 4: With zoom and pan
+    // Pan right by 100, scale by 2
+    // worldX = (mouseX - transform.x) / transform.k
+    // mouseX = worldX * transform.k + transform.x
+    // To hit chapter 1 (worldX = 50): mouseX = 50 * 2 + 100 = 200
+    renderer.transform = { x: 100, k: 2, y: 0 };
+    if (renderer.getChapterAtScreenPos(200) === 1) {
+        console.log('✅ PASSED: returned correct index with zoom and pan');
+    } else {
+        console.error('❌ FAILED: incorrect index with zoom and pan');
+        allPassed = false;
+    }
+
+    if (!allPassed) {
+        process.exit(1);
+    }
+}
+
 /**
  * Tests for Renderer.getArcDistanceToPoint
  */
@@ -165,4 +259,5 @@ function testGetArcDistanceToPoint() {
 testGetArcColor();
 testSpatialIndex();
 testGetBinYBounds();
+testGetChapterAtScreenPos();
 testGetArcDistanceToPoint();
