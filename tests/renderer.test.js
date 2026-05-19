@@ -256,8 +256,145 @@ function testGetArcDistanceToPoint() {
     }
 }
 
+
+/**
+ * Tests for Renderer.getArcAtScreenPos
+ */
+function testGetArcAtScreenPos() {
+    console.log('\n--- getArcAtScreenPos Unit Tests ---');
+
+    global.document = {
+        getElementById: () => ({
+            getContext: () => ({
+                scale: () => {},
+                fillRect: () => {},
+                clearRect: () => {},
+                save: () => {},
+                restore: () => {},
+                translate: () => {},
+                beginPath: () => {},
+                ellipse: () => {},
+                stroke: () => {}
+            }),
+            parentElement: { getBoundingClientRect: () => ({ width: 1000, height: 500 }), insertBefore: () => {} },
+            style: {}
+        }),
+        createElement: () => ({
+            getContext: () => ({}),
+            style: {},
+            transferControlToOffscreen: () => ({})
+        })
+    };
+    global.window = { addEventListener: () => {} };
+    global.d3 = { zoomIdentity: { x: 0, y: 0, k: 1 } };
+    global.Worker = class { postMessage() {} };
+
+    const mockData = {
+        totalVerses: 100,
+        chapters: [],
+        arcs: []
+    };
+    const renderer = new Renderer('canvas', mockData);
+
+    // Setup initial state
+    renderer.width = 1000;
+    renderer.height = 500;
+    renderer.transform = { x: 0, y: 0, k: 1 };
+
+    let allPassed = true;
+
+    const assertTest = (condition, successMsg, failMsg) => {
+        if (condition) {
+            console.log(`✅ PASSED: ${successMsg}`);
+        } else {
+            console.error(`❌ FAILED: ${failMsg}`);
+            allPassed = false;
+        }
+    };
+
+    // Early exits
+    assertTest(renderer.getArcAtScreenPos(100, 100) === null,
+        'returned null for missing visibleArcs',
+        'did not return null for missing visibleArcs');
+
+    renderer.visibleArcs = [];
+    assertTest(renderer.getArcAtScreenPos(100, 100) === null,
+        'returned null for empty visibleArcs',
+        'did not return null for empty visibleArcs');
+
+    renderer.visibleArcs = [{ source: 0, target: 1 }];
+    renderer.chapterPositions = null;
+    assertTest(renderer.getArcAtScreenPos(100, 100) === null,
+        'returned null for missing chapterPositions',
+        'did not return null for missing chapterPositions');
+
+    renderer.chapterPositions = [{ centerX: 100 }, { centerX: 200 }];
+    renderer.arcSpatialIndex = null;
+    assertTest(renderer.getArcAtScreenPos(100, 100) === null,
+        'returned null for missing arcSpatialIndex',
+        'did not return null for missing arcSpatialIndex');
+
+    renderer.arcSpatialIndex = Array(50).fill().map(() => Array(50).fill([]));
+
+    // Out of bounds Y
+    assertTest(renderer.getArcAtScreenPos(150, 480) === null, // bottomY = 500 - 40 = 460
+        'returned null for Y out of bounds',
+        'did not return null for Y out of bounds');
+
+    // Missing bounds (empty bin bounds check)
+    // By passing an X far out of range, getBinYBounds returns null, continuing the loop
+    assertTest(renderer.getArcAtScreenPos(10000, 250) === null,
+        'returned null when bin bounds are empty',
+        'did not return null when bin bounds are empty');
+
+
+
+    // Mock the static method to assert closest logic based on distance
+    const originalGetArcDistanceToPoint = Renderer.getArcDistanceToPoint;
+    Renderer.getArcDistanceToPoint = (worldX, worldY, p1, p2, maxR, bottomY, threshold) => {
+        // Return simulated distances so we can test the minDistance logic accurately
+        if (p1 === 100 && p2 === 200) return 0; // arc1 distance
+        if (p1 === 100 && p2 === 300) return 2; // arc2 distance
+        return null;
+    };
+
+    // Setup real indexing environment
+    const arc1 = { source: 0, target: 1, distance: 10 };
+    const arc2 = { source: 0, target: 2, distance: 20 };
+    renderer.chapterPositions = [{ centerX: 100 }, { centerX: 200 }, { centerX: 300 }];
+
+    // Simulate real bin structure
+    renderer.spatialMaxR = 50;
+
+    renderer.arcSpatialIndex[7] = [];
+    // Place both arcs in the same bin
+    renderer.arcSpatialIndex[7][45] = [arc2, arc1];
+
+    renderer.transform = { x: 0, y: 0, k: 1 };
+
+    const hitArc = renderer.getArcAtScreenPos(150, 20);
+    assertTest(hitArc === arc1,
+        'returned correct closest arc on positive hit',
+        'did not return correct closest arc on positive hit');
+
+    // Test with transform (zoom and pan)
+    renderer.transform = { x: 50, y: -10, k: 2 };
+    const transformedHitArc = renderer.getArcAtScreenPos(350, 30);
+    assertTest(transformedHitArc === arc1,
+        'returned correct arc when zoomed and panned',
+        'did not return correct arc when zoomed and panned');
+
+    // Restore static method
+    Renderer.getArcDistanceToPoint = originalGetArcDistanceToPoint;
+
+    if (!allPassed) {
+        process.exit(1);
+    }
+}
+
 testGetArcColor();
 testSpatialIndex();
 testGetBinYBounds();
 testGetChapterAtScreenPos();
 testGetArcDistanceToPoint();
+testGetArcAtScreenPos();
