@@ -119,5 +119,50 @@ function testSpatialIndex() {
     }
 }
 
+/**
+ * Tests for Renderer.getBinYBounds
+ */
+function testGetBinYBounds() {
+    console.log('\n--- getBinYBounds Unit Tests ---');
+
+    // worldX, binX, binWidth, binHeight, D2, rxTolerance, GRID_SIZE
+    const bounds = Renderer.getBinYBounds(100, 0, 10, 10, 0, 5, 50);
+
+    if (bounds && typeof bounds.startBinY === 'number' && typeof bounds.endBinY === 'number') {
+        console.log(`✅ PASSED: returned valid bounds {startBinY: ${bounds.startBinY}, endBinY: ${bounds.endBinY}}`);
+    } else {
+        console.error('❌ FAILED: returned invalid bounds');
+        process.exit(1);
+    }
+}
+
+/**
+ * Tests for Renderer.getArcDistanceToPoint
+ */
+function testGetArcDistanceToPoint() {
+    console.log('\n--- getArcDistanceToPoint Unit Tests ---');
+
+    // Exact match
+    // worldX, worldY, p1, p2, maxR, bottomY, threshold
+    let dist = Renderer.getArcDistanceToPoint(150, 480, 100, 200, 100, 500, 50);
+    if (dist !== null && dist < 50) {
+        console.log(`✅ PASSED: returned valid distance for point on arc (${dist})`);
+    } else {
+        console.error('❌ FAILED: did not return expected distance for point on arc');
+        process.exit(1);
+    }
+
+    // Out of bounds
+    dist = Renderer.getArcDistanceToPoint(0, 0, 100, 200, 100, 500, 5);
+    if (dist === null) {
+        console.log(`✅ PASSED: returned null for point far away`);
+    } else {
+        console.error('❌ FAILED: returned distance for point far away');
+        process.exit(1);
+    }
+}
+
 testGetArcColor();
 testSpatialIndex();
+testGetBinYBounds();
+testGetArcDistanceToPoint();

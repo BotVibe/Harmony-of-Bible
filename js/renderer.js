@@ -198,6 +198,54 @@ class Renderer {
         });
     }
 
+    static getBinYBounds(worldX, binX, binWidth, binHeight, D2, rxTolerance, GRID_SIZE) {
+        const m0 = binX * binWidth;
+        const m1 = m0 + binWidth;
+
+        let closestMidX = worldX;
+        if (worldX < m0) closestMidX = m0;
+        else if (worldX > m1) closestMidX = m1;
+
+        const farthestMidX = Math.abs(worldX - m0) > Math.abs(worldX - m1) ? m0 : m1;
+
+        const idealRxMin = Math.sqrt((closestMidX - worldX) ** 2 + D2);
+        const idealRxMax = Math.sqrt((farthestMidX - worldX) ** 2 + D2);
+
+        const minRx = idealRxMin - rxTolerance;
+        const maxRx = idealRxMax + rxTolerance;
+
+        let startBinY = Math.floor(minRx / binHeight) - 1;
+        let endBinY = Math.floor(maxRx / binHeight) + 1;
+
+        if (startBinY < 0) startBinY = 0;
+        if (endBinY >= GRID_SIZE) endBinY = GRID_SIZE - 1;
+
+        if (startBinY > GRID_SIZE - 1 || endBinY < 0) return null;
+
+        return { startBinY, endBinY };
+    }
+
+    static getArcDistanceToPoint(worldX, worldY, p1, p2, maxR, bottomY, threshold) {
+        const midX = (p1 + p2) / 2;
+        const rX = Math.abs(p2 - p1) / 2;
+        const rY = Math.max((rX / maxR) * (bottomY - 20), 1);
+
+        if (worldX < midX - rX - threshold || worldX > midX + rX + threshold) return null;
+        if (worldY < bottomY - rY - threshold) return null;
+
+        const arcDx = (worldX - midX) / rX;
+        const arcDy = (worldY - bottomY) / rY;
+        const distFromCenter = Math.sqrt(arcDx * arcDx + arcDy * arcDy);
+
+        const normDist = Math.abs(distFromCenter - 1);
+        const approxPixelDist = normDist * Math.min(rX, rY);
+
+        if (approxPixelDist < threshold) {
+            return approxPixelDist;
+        }
+        return null;
+    }
+
     static getArcColor(distance) {
         if (typeof distance !== 'number' || isNaN(distance)) {
             return 'hsla(0, 0%, 50%, ';
@@ -410,30 +458,10 @@ class Renderer {
 
         // Iterate over X bins to find matching Y bins
         for (let binX = 0; binX < GRID_SIZE; binX++) {
-            const m0 = binX * binWidth;
-            const m1 = m0 + binWidth;
+            const bounds = Renderer.getBinYBounds(worldX, binX, binWidth, binHeight, D2, rxTolerance, GRID_SIZE);
+            if (!bounds) continue;
 
-            let closestMidX = worldX;
-            if (worldX < m0) closestMidX = m0;
-            else if (worldX > m1) closestMidX = m1;
-
-            const farthestMidX = Math.abs(worldX - m0) > Math.abs(worldX - m1) ? m0 : m1;
-
-            const idealRxMin = Math.sqrt((closestMidX - worldX) ** 2 + D2);
-            const idealRxMax = Math.sqrt((farthestMidX - worldX) ** 2 + D2);
-
-            const minRx = idealRxMin - rxTolerance;
-            const maxRx = idealRxMax + rxTolerance;
-
-            let startBinY = Math.floor(minRx / binHeight) - 1;
-            let endBinY = Math.floor(maxRx / binHeight) + 1;
-
-            if (startBinY < 0) startBinY = 0;
-            if (endBinY >= GRID_SIZE) endBinY = GRID_SIZE - 1;
-
-            if (startBinY > GRID_SIZE - 1 || endBinY < 0) continue;
-
-            for (let binY = startBinY; binY <= endBinY; binY++) {
+            for (let binY = bounds.startBinY; binY <= bounds.endBinY; binY++) {
                 const arcsInBin = this.arcSpatialIndex[binX][binY];
                 if (!arcsInBin) continue;
 
@@ -443,25 +471,11 @@ class Renderer {
                     const p1 = this.chapterPositions[arc.source].centerX;
                     const p2 = this.chapterPositions[arc.target].centerX;
 
-                    const midX = (p1 + p2) / 2;
-                    const rX = Math.abs(p2 - p1) / 2;
-                    const rY = Math.max((rX / maxR) * (bottomY - 20), 1);
+                    const approxPixelDist = Renderer.getArcDistanceToPoint(worldX, worldY, p1, p2, maxR, bottomY, threshold);
 
-                    if (worldX < midX - rX - threshold || worldX > midX + rX + threshold) continue;
-                    if (worldY < bottomY - rY - threshold) continue;
-
-                    const arcDx = (worldX - midX) / rX;
-                    const arcDy = (worldY - bottomY) / rY;
-                    const distFromCenter = Math.sqrt(arcDx * arcDx + arcDy * arcDy);
-
-                    const normDist = Math.abs(distFromCenter - 1);
-                    const approxPixelDist = normDist * Math.min(rX, rY);
-
-                    if (approxPixelDist < threshold) {
-                        if (approxPixelDist < minDistance) {
-                            minDistance = approxPixelDist;
-                            closestArc = arc;
-                        }
+                    if (approxPixelDist !== null && approxPixelDist < minDistance) {
+                        minDistance = approxPixelDist;
+                        closestArc = arc;
                     }
                 }
             }
