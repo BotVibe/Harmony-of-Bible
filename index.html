@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Die Harmonie der Bibel - 63.779 Querverweise</title>
+    <title data-i18n="title">Die Harmonie der Bibel - 63.779 Querverweise</title>
     <link rel="stylesheet" href="css/style.css">
     <!-- D3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -13,43 +13,48 @@
         <!-- Top Control Panel -->
         <header id="control-panel">
             <div class="control-group">
-                <label for="book-filter">Buch:</label>
+                <label for="book-filter" data-i18n="book">Buch:</label>
                 <select id="book-filter">
-                    <option value="all">Alle Bücher</option>
+                    <option value="all" data-i18n="allBooks">Alle Bücher</option>
                 </select>
             </div>
             <div class="control-group">
-                <label for="distance-filter">Distanz (Kapitel):</label>
+                <label for="distance-filter" data-i18n="distance">Distanz (Kapitel):</label>
                 <input type="range" id="distance-filter" min="0" max="1189" value="1189">
                 <span id="distance-value">1189</span>
             </div>
             <div class="control-group filter-buttons" id="testament-filters">
-                <button data-filter="all" class="active">Alle</button>
-                <button data-filter="ot">Nur AT</button>
-                <button data-filter="nt">Nur NT</button>
-                <button data-filter="cross">AT ↔ NT</button>
+                <button data-filter="all" class="active" data-i18n="allTestaments">Alle</button>
+                <button data-filter="ot" data-i18n="onlyOT">Nur AT</button>
+                <button data-filter="nt" data-i18n="onlyNT">Nur NT</button>
+                <button data-filter="cross" data-i18n="crossTestament">AT ↔ NT</button>
             </div>
             <div class="control-group filter-buttons" id="group-filters">
                 <select id="group-filter">
-                    <option value="all">Alle Gruppen</option>
-                <option value="Tora">Tora</option>
-                    <option value="Historische Bücher">Historische Bücher</option>
-                    <option value="Poetische Bücher">Poetische Bücher</option>
-                    <option value="Propheten">Propheten</option>
-                    <option value="Evangelien">Evangelien</option>
-                    <option value="Briefe">Briefe</option>
-                    <option value="Offenbarung">Offenbarung</option>
+                    <option value="all" data-i18n="allGroups">Alle Gruppen</option>
+                <option value="Tora" data-i18n="tora">Tora</option>
+                    <option value="Historische Bücher" data-i18n="historical">Historische Bücher</option>
+                    <option value="Poetische Bücher" data-i18n="poetic">Poetische Bücher</option>
+                    <option value="Propheten" data-i18n="prophets">Propheten</option>
+                    <option value="Evangelien" data-i18n="gospels">Evangelien</option>
+                    <option value="Briefe" data-i18n="letters">Briefe</option>
+                    <option value="Offenbarung" data-i18n="revelation">Offenbarung</option>
                 </select>
             </div>
             <div class="control-group">
-                <input type="text" id="search-input" placeholder="Suchen (z.B. Joh 3)">
+                <input type="text" id="search-input" data-i18n-placeholder="searchPlaceholder" placeholder="Suchen (z.B. Joh 3)">
                 <span id="search-error" class="error-text hidden"></span>
             </div>
             <div class="control-group">
-                <button id="reset-zoom">Reset Zoom</button>
+                <button id="reset-zoom" data-i18n="resetZoom">Reset Zoom</button>
             </div>
             <div class="control-group">
-                <button id="lang-toggle">EN</button>
+                <select id="lang-select">
+                    <option value="de">DE</option>
+                    <option value="en">EN</option>
+                    <option value="it">IT</option>
+                    <option value="fr">FR</option>
+                </select>
             </div>
             <div class="control-group">
                 <button id="update-data">Update Data</button>
@@ -61,7 +66,7 @@
             <!-- Loading Indicator -->
             <div id="loading-overlay">
                 <div class="spinner"></div>
-                <div id="loading-text">Lade Daten (0%)...</div>
+                <div id="loading-text" data-i18n="loading">Lade Daten (0%)...</div>
             </div>
 
             <!-- Tooltip -->
@@ -71,8 +76,8 @@
             <div id="legend">
                 <div class="legend-gradient"></div>
                 <div class="legend-labels">
-                    <span>Nah</span>
-                    <span>Weit</span>
+                    <span data-i18n="legendNear">Nah</span>
+                    <span data-i18n="legendFar">Weit</span>
                 </div>
             </div>
 
@@ -108,7 +113,7 @@
                 </div>
 
                 <div class="chapter-details hidden" id="chapter-details">
-                    <h3>Kapitel Details</h3>
+                    <h3 data-i18n="chapterDetailsTitle">Kapitel Details</h3>
                     <div id="chapter-info"></div>
                     <ul id="chapter-links-list"></ul>
                 </div>

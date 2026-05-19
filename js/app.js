@@ -13,9 +13,171 @@ class App {
         this.sidebar = document.getElementById('sidebar');
         this.searchError = document.getElementById('search-error');
 
+
         this.lang = 'de'; // Default language
 
+        this.translations = {
+            de: {
+                title: 'Die Harmonie der Bibel - 63.779 Querverweise',
+                book: 'Buch:',
+                allBooks: 'Alle Bücher',
+                distance: 'Distanz (Kapitel):',
+                allTestaments: 'Alle',
+                onlyOT: 'Nur AT',
+                onlyNT: 'Nur NT',
+                crossTestament: 'AT ↔ NT',
+                allGroups: 'Alle Gruppen',
+                tora: 'Tora',
+                historical: 'Historische Bücher',
+                poetic: 'Poetische Bücher',
+                prophets: 'Propheten',
+                gospels: 'Evangelien',
+                letters: 'Briefe',
+                revelation: 'Offenbarung',
+                searchPlaceholder: 'Suchen (z.B. Joh 3)',
+                resetZoom: 'Reset Zoom',
+                loading: 'Lade Daten...',
+                legendNear: 'Nah',
+                legendFar: 'Weit',
+                statsTitle: 'Statistiken',
+                visibleArcs: 'Sichtbare Bögen',
+                topBooksTitle: 'Top 10 Bücher (Verbindungen)',
+                testamentDistTitle: 'AT / NT Verteilung',
+                chapterDetailsTitle: 'Kapitel Details',
+                connectedChaptersTitle: 'Verbundene Kapitel:',
+                chapterNotFound: 'Kapitel nicht gefunden.'
+            },
+            en: {
+                title: 'Bible Cross-References',
+                book: 'Book:',
+                allBooks: 'All Books',
+                distance: 'Distance (Chapters):',
+                allTestaments: 'All',
+                onlyOT: 'OT Only',
+                onlyNT: 'NT Only',
+                crossTestament: 'OT ↔ NT',
+                allGroups: 'All Groups',
+                tora: 'Torah',
+                historical: 'Historical Books',
+                poetic: 'Poetic Books',
+                prophets: 'Prophets',
+                gospels: 'Gospels',
+                letters: 'Epistles',
+                revelation: 'Revelation',
+                searchPlaceholder: 'Search (e.g. Joh 3)',
+                resetZoom: 'Reset Zoom',
+                loading: 'Loading data...',
+                legendNear: 'Near',
+                legendFar: 'Far',
+                statsTitle: 'Statistics',
+                visibleArcs: 'Visible Arcs',
+                topBooksTitle: 'Top 10 Books (Connections)',
+                testamentDistTitle: 'OT / NT Distribution',
+                chapterDetailsTitle: 'Chapter Details',
+                connectedChaptersTitle: 'Connected Chapters:',
+                chapterNotFound: 'Chapter not found.'
+            },
+            it: {
+                title: 'Riferimenti Incrociati della Bibbia',
+                book: 'Libro:',
+                allBooks: 'Tutti i libri',
+                distance: 'Distanza (Capitoli):',
+                allTestaments: 'Tutti',
+                onlyOT: 'Solo AT',
+                onlyNT: 'Solo NT',
+                crossTestament: 'AT ↔ NT',
+                allGroups: 'Tutti i Gruppi',
+                tora: 'Torah',
+                historical: 'Libri Storici',
+                poetic: 'Libri Poetici',
+                prophets: 'Profeti',
+                gospels: 'Vangeli',
+                letters: 'Epistole',
+                revelation: 'Apocalisse',
+                searchPlaceholder: 'Cerca (es. Giov 3)',
+                resetZoom: 'Reimposta Zoom',
+                loading: 'Caricamento dati...',
+                legendNear: 'Vicino',
+                legendFar: 'Lontano',
+                statsTitle: 'Statistiche',
+                visibleArcs: 'Archi Visibili',
+                topBooksTitle: 'I 10 Libri più Connessi',
+                testamentDistTitle: 'Distribuzione AT / NT',
+                chapterDetailsTitle: 'Dettagli Capitolo',
+                connectedChaptersTitle: 'Capitoli Connessi:',
+                chapterNotFound: 'Capitolo non trovato.'
+            },
+            fr: {
+                title: 'Références Croisées de la Bible',
+                book: 'Livre:',
+                allBooks: 'Tous les livres',
+                distance: 'Distance (Chapitres):',
+                allTestaments: 'Tous',
+                onlyOT: 'AT Seulement',
+                onlyNT: 'NT Seulement',
+                crossTestament: 'AT ↔ NT',
+                allGroups: 'Tous les Groupes',
+                tora: 'Torah',
+                historical: 'Livres Historiques',
+                poetic: 'Livres Poétiques',
+                prophets: 'Prophètes',
+                gospels: 'Évangiles',
+                letters: 'Épîtres',
+                revelation: 'Apocalypse',
+                searchPlaceholder: 'Rechercher (ex. Jean 3)',
+                resetZoom: 'Réinitialiser Zoom',
+                loading: 'Chargement des données...',
+                legendNear: 'Proche',
+                legendFar: 'Loin',
+                statsTitle: 'Statistiques',
+                visibleArcs: 'Arcs Visibles',
+                topBooksTitle: 'Top 10 des Livres',
+                testamentDistTitle: 'Distribution AT / NT',
+                chapterDetailsTitle: 'Détails du Chapitre',
+                connectedChaptersTitle: 'Chapitres Connectés:',
+                chapterNotFound: 'Chapitre non trouvé.'
+            }
+        };
+
+        this.updateUIStrings();
+
+
         this.init();
+    }
+
+
+    updateUIStrings() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (this.translations[this.lang] && this.translations[this.lang][key]) {
+                if (el.tagName === 'TITLE') {
+                    document.title = this.translations[this.lang][key];
+                } else {
+                    el.textContent = this.translations[this.lang][key];
+                }
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (this.translations[this.lang] && this.translations[this.lang][key]) {
+                el.setAttribute('placeholder', this.translations[this.lang][key]);
+            }
+        });
+    }
+
+    getBookName(book) {
+        if (this.lang === 'de') return book.nameDE || book.name;
+        if (this.lang === 'it') return book.nameIT || book.name;
+        if (this.lang === 'fr') return book.nameFR || book.name;
+        return book.name;
+    }
+
+    getChapterBookName(ch) {
+        if (this.lang === 'de') return ch.bookNameDE || ch.bookName;
+        if (this.lang === 'it') return ch.bookNameIT || ch.bookName;
+        if (this.lang === 'fr') return ch.bookNameFR || ch.bookName;
+        return ch.bookName;
     }
 
     async init() {
@@ -43,13 +205,15 @@ class App {
 
     setupUI() {
         // Populate book filter
+
         const bookFilter = document.getElementById('book-filter');
         this.data.books.forEach(b => {
             const opt = document.createElement('option');
             opt.value = b.id;
-            opt.textContent = this.lang === 'de' ? b.nameDE : b.name;
+            opt.textContent = this.getBookName(b);
             bookFilter.appendChild(opt);
         });
+
 
         // Setup filter listeners
         bookFilter.addEventListener('change', (e) => {
@@ -95,7 +259,7 @@ class App {
                     }
                     this.hideSearchError();
                 } else {
-                    this.showSearchError(this.lang === 'de' ? 'Kapitel nicht gefunden.' : 'Chapter not found.');
+                    this.showSearchError(this.translations[this.lang].chapterNotFound);
                 }
             }
         });
@@ -104,13 +268,15 @@ class App {
             this.hideSearchError();
         });
 
-        document.getElementById('lang-toggle').addEventListener('click', (e) => {
-            this.lang = this.lang === 'de' ? 'en' : 'de';
-            e.target.textContent = this.lang.toUpperCase();
+        document.getElementById('lang-select').addEventListener('change', (e) => {
+            this.lang = e.target.value;
+            this.updateUIStrings();
+
             // Re-populate books
+            const bookFilter = document.getElementById('book-filter');
             Array.from(bookFilter.options).forEach((opt, idx) => {
                 if (idx > 0) { // Skip "All"
-                    opt.textContent = this.lang === 'de' ? this.data.books[idx-1].nameDE : this.data.books[idx-1].name;
+                    opt.textContent = this.getBookName(this.data.books[idx-1]);
                 }
             });
             this.renderer.render(); // Re-render to update labels if implemented
@@ -222,8 +388,8 @@ class App {
         const sCh = this.data.chapters[arc.source];
         const tCh = this.data.chapters[arc.target];
 
-        const sBookName = this.lang === 'de' ? sCh.bookNameDE : sCh.bookName;
-        const tBookName = this.lang === 'de' ? tCh.bookNameDE : tCh.bookName;
+        const sBookName = this.getChapterBookName(sCh);
+        const tBookName = this.getChapterBookName(tCh);
 
         this.tooltip.textContent = '';
         const strong = document.createElement('strong');
@@ -238,7 +404,7 @@ class App {
 
     showChapterTooltip(idx, x, y) {
         const ch = this.data.chapters[idx];
-        const bookName = this.lang === 'de' ? ch.bookNameDE : ch.bookName;
+        const bookName = this.getChapterBookName(ch);
 
         this.tooltip.textContent = '';
         const strong = document.createElement('strong');
@@ -277,7 +443,7 @@ class App {
         const info = document.getElementById('chapter-info');
         const list = document.getElementById('chapter-links-list');
 
-        const bookName = this.lang === 'de' ? ch.bookNameDE : ch.bookName;
+        const bookName = this.getChapterBookName(ch);
         info.textContent = '';
         const strongInfo = document.createElement('strong');
         strongInfo.textContent = `${bookName} ${ch.chapterNum}`;
@@ -296,7 +462,7 @@ class App {
         connectedArcs.forEach(arc => {
             const targetIdx = arc.source === idx ? arc.target : arc.source;
             const targetCh = this.data.chapters[targetIdx];
-            const targetBookName = this.lang === 'de' ? targetCh.bookNameDE : targetCh.bookName;
+            const targetBookName = this.getChapterBookName(targetCh);
 
             const li = document.createElement('li');
             li.textContent = `↔ ${targetBookName} ${targetCh.chapterNum}`;

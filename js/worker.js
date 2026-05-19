@@ -77,6 +77,59 @@ self.onmessage = function(e) {
             }
         });
 
+        // 2. Draw Chapter Bars
+        let lastBookId = -1;
+        let bookColorToggle = false;
+        const maxBarHeight = 30;
+        const barLight = '#444455';
+        const barDark = '#222233';
+
+        self.data.chapters.forEach((ch, idx) => {
+            const pos = chapterPositions[idx];
+
+            if (ch.bookId !== lastBookId) {
+                bookColorToggle = !bookColorToggle;
+                lastBookId = ch.bookId;
+            }
+
+            // Bar color
+            if (idx === 0 || ch.shortName === 'Matt' && ch.chapterNum === 1) {
+                self.ctx.fillStyle = '#ffffff'; // Gen and Matt
+            } else {
+                self.ctx.fillStyle = bookColorToggle ? barLight : barDark;
+            }
+
+            // Highlight hovered/pinned chapter
+            if (idx === focusChapter) {
+                self.ctx.fillStyle = '#e94560';
+            }
+
+            // Bar height proportional to verses
+            // max verses in a chapter is Ps 119 (176 verses)
+            const h = (ch.verses / 176) * maxBarHeight;
+
+            // Prevent bar from getting too wide/narrow visually
+            let drawWidth = pos.width;
+            if (drawWidth * k < 1) {
+                drawWidth = 1 / k; // Min 1px wide on screen
+            }
+
+            self.ctx.fillRect(pos.x, bottomY, drawWidth, h);
+
+            // Labels at high zoom
+            if (k > 5 && ch.chapterNum === 1) {
+                self.ctx.save();
+                self.ctx.fillStyle = '#ffffff';
+                // Adjust font size inversely to zoom to keep it readable but not huge
+                const fontSize = Math.max(10 / k, 2);
+                self.ctx.font = `${fontSize}px sans-serif`;
+                self.ctx.translate(pos.x, bottomY + h + (5/k));
+                self.ctx.rotate(Math.PI / 4);
+                self.ctx.fillText(ch.shortName, 0, 0);
+                self.ctx.restore();
+            }
+        });
+
         self.ctx.restore();
     }
 };

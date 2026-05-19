@@ -25,6 +25,8 @@ class DataLoader {
                         bookId: book.id,
                         bookName: book.name,
                         bookNameDE: book.nameDE,
+                        bookNameIT: book.nameIT,
+                        bookNameFR: book.nameFR,
                         shortName: book.shortName,
                         chapterNum: ch.chapter,
                         verses: ch.verses,

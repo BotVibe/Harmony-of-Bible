@@ -360,55 +360,57 @@ class Renderer {
             });
         }
 
-        // 2. Draw Chapter Bars
-        let lastBookId = -1;
-        let bookColorToggle = false;
+        if (!this.useWorker) {
+            // 2. Draw Chapter Bars
+            let lastBookId = -1;
+            let bookColorToggle = false;
 
-        this.data.chapters.forEach((ch, idx) => {
-            const pos = this.chapterPositions[idx];
+            this.data.chapters.forEach((ch, idx) => {
+                const pos = this.chapterPositions[idx];
 
-            if (ch.bookId !== lastBookId) {
-                bookColorToggle = !bookColorToggle;
-                lastBookId = ch.bookId;
-            }
+                if (ch.bookId !== lastBookId) {
+                    bookColorToggle = !bookColorToggle;
+                    lastBookId = ch.bookId;
+                }
 
-            // Bar color
-            if (idx === 0 || ch.shortName === 'Matt' && ch.chapterNum === 1) {
-                this.ctx.fillStyle = '#ffffff'; // Gen and Matt
-            } else {
-                this.ctx.fillStyle = bookColorToggle ? this.barLight : this.barDark;
-            }
+                // Bar color
+                if (idx === 0 || ch.shortName === 'Matt' && ch.chapterNum === 1) {
+                    this.ctx.fillStyle = '#ffffff'; // Gen and Matt
+                } else {
+                    this.ctx.fillStyle = bookColorToggle ? this.barLight : this.barDark;
+                }
 
-            // Highlight hovered/pinned chapter
-            if (idx === focusChapter) {
-                this.ctx.fillStyle = '#e94560';
-            }
+                // Highlight hovered/pinned chapter
+                if (idx === focusChapter) {
+                    this.ctx.fillStyle = '#e94560';
+                }
 
-            // Bar height proportional to verses
-            // max verses in a chapter is Ps 119 (176 verses)
-            const h = (ch.verses / 176) * maxBarHeight;
+                // Bar height proportional to verses
+                // max verses in a chapter is Ps 119 (176 verses)
+                const h = (ch.verses / 176) * maxBarHeight;
 
-            // Prevent bar from getting too wide/narrow visually
-            let drawWidth = pos.width;
-            if (drawWidth * k < 1) {
-                drawWidth = 1 / k; // Min 1px wide on screen
-            }
+                // Prevent bar from getting too wide/narrow visually
+                let drawWidth = pos.width;
+                if (drawWidth * k < 1) {
+                    drawWidth = 1 / k; // Min 1px wide on screen
+                }
 
-            this.ctx.fillRect(pos.x, bottomY, drawWidth, h);
+                this.ctx.fillRect(pos.x, bottomY, drawWidth, h);
 
-            // Labels at high zoom
-            if (k > 5 && ch.chapterNum === 1) {
-                this.ctx.save();
-                this.ctx.fillStyle = '#ffffff';
-                // Adjust font size inversely to zoom to keep it readable but not huge
-                const fontSize = Math.max(10 / k, 2);
-                this.ctx.font = `${fontSize}px sans-serif`;
-                this.ctx.translate(pos.x, bottomY + h + (5/k));
-                this.ctx.rotate(Math.PI / 4);
-                this.ctx.fillText(ch.shortName, 0, 0);
-                this.ctx.restore();
-            }
-        });
+                // Labels at high zoom
+                if (k > 5 && ch.chapterNum === 1) {
+                    this.ctx.save();
+                    this.ctx.fillStyle = '#ffffff';
+                    // Adjust font size inversely to zoom to keep it readable but not huge
+                    const fontSize = Math.max(10 / k, 2);
+                    this.ctx.font = `${fontSize}px sans-serif`;
+                    this.ctx.translate(pos.x, bottomY + h + (5/k));
+                    this.ctx.rotate(Math.PI / 4);
+                    this.ctx.fillText(ch.shortName, 0, 0);
+                    this.ctx.restore();
+                }
+            });
+        }
 
         this.ctx.restore();
     }
