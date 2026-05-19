@@ -59,21 +59,24 @@ class DataLoader {
         }
     }
 
+    static parseRef(refStr) {
+        const parts = refStr.split('.');
+        if (parts.length >= 2) {
+            return {
+                bookShort: parts[0],
+                chapter: parseInt(parts[1], 10)
+            };
+        }
+        return null;
+    }
+
+    static getChapterIndex(ref, chapterLookup) {
+        return chapterLookup.get(`${ref.bookShort}.${ref.chapter}`);
+    }
+
     parseCrossReferences(text) {
         const lines = text.split('\n');
         const arcs = [];
-
-        // Helper to parse ref like "Gen.1.1" -> {book, chapter, verse}
-        const parseRef = (refStr) => {
-            const parts = refStr.split('.');
-            if (parts.length >= 2) {
-                return {
-                    bookShort: parts[0],
-                    chapter: parseInt(parts[1], 10)
-                };
-            }
-            return null;
-        };
 
         // Optimize lookup by creating a map "BookShort.Chapter" -> chapterIndex
         const chapterLookup = new Map();
@@ -87,12 +90,12 @@ class DataLoader {
             if (!line.trim()) return;
             const parts = line.trim().split(' ');
             if (parts.length >= 2) {
-                const ref1 = parseRef(parts[0]);
-                const ref2 = parseRef(parts[1]);
+                const ref1 = DataLoader.parseRef(parts[0]);
+                const ref2 = DataLoader.parseRef(parts[1]);
 
                 if (ref1 && ref2) {
-                    const ch1Index = chapterLookup.get(`${ref1.bookShort}.${ref1.chapter}`);
-                    const ch2Index = chapterLookup.get(`${ref2.bookShort}.${ref2.chapter}`);
+                    const ch1Index = DataLoader.getChapterIndex(ref1, chapterLookup);
+                    const ch2Index = DataLoader.getChapterIndex(ref2, chapterLookup);
 
                     if (ch1Index !== undefined && ch2Index !== undefined && ch1Index !== ch2Index) {
                         const start = Math.min(ch1Index, ch2Index);
