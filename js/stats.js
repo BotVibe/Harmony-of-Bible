@@ -160,3 +160,9 @@ class StatsCharts {
             .attr("fill", "#69b3a2");
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StatsCharts;
+} else {
+    window.StatsCharts = StatsCharts;
+}
