@@ -35,12 +35,14 @@ Since the application uses Web Workers and fetches data asynchronously, it must 
 
 ## Testing
 
-The project includes a Node.js unit test suite for the core visualization logic.
+The project includes a Node.js unit test suite for the core visualization logic, data loading, and statistics generation.
 
-To run the unit tests:
+To run the full suite of unit tests:
 ```bash
-node tests/renderer.test.js
+node tests/dataLoader.test.js && node tests/renderer.test.js && node tests/stats.test.js
 ```
+
+Visual verification using Playwright is also used when testing UI layout changes in headless environments.
 
 ## Deployment
 
