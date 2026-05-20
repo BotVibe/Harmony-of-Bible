@@ -1,3 +1,5 @@
+const workerColorCache = new Map();
+
 self.onmessage = function(e) {
     const { type, payload } = e.data;
 
@@ -39,12 +41,18 @@ self.onmessage = function(e) {
                 return 'hsla(0, 0%, 50%, ';
             }
             const validDistance = Math.max(0, distance);
+            if (workerColorCache.has(validDistance)) {
+                return workerColorCache.get(validDistance);
+            }
+
             const norm = Math.min(validDistance / 1189, 1);
             let hue;
             if (norm < 0.1) hue = 270 - (norm / 0.1) * 30;
             else if (norm < 0.4) hue = 240 - ((norm - 0.1) / 0.3) * 180;
             else hue = 60 - ((norm - 0.4) / 0.6) * 60;
-            return `hsla(${hue}, 100%, 50%, `;
+            const colorStr = `hsla(${hue}, 100%, 50%, `;
+            workerColorCache.set(validDistance, colorStr);
+            return colorStr;
         }
 
         visibleArcs.forEach(arc => {

@@ -246,6 +246,8 @@ class Renderer {
         return null;
     }
 
+    static colorCache = new Map();
+
     static getArcColor(distance) {
         if (typeof distance !== 'number' || isNaN(distance)) {
             return 'hsla(0, 0%, 50%, ';
@@ -253,6 +255,11 @@ class Renderer {
 
         // Normalised distance 0 - 1189, handle negative distances
         const validDistance = Math.max(0, distance);
+
+        if (Renderer.colorCache.has(validDistance)) {
+            return Renderer.colorCache.get(validDistance);
+        }
+
         const norm = Math.min(validDistance / 1189, 1);
 
         // HSL from 270 (Purple) to 0 (Red)
@@ -272,7 +279,9 @@ class Renderer {
             hue = 60 - ((norm - 0.4) / 0.6) * 60;
         }
 
-        return `hsla(${hue}, 100%, 50%, `;
+        const colorStr = `hsla(${hue}, 100%, 50%, `;
+        Renderer.colorCache.set(validDistance, colorStr);
+        return colorStr;
     }
 
     render() {
