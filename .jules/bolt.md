@@ -12,3 +12,7 @@
 ## 2026-05-20 - Memoization of Color Computation inside Hot Render Loops
 **Learning:** Calling a math-heavy function that involves string concatenation (`hsla(...)`) 63,000+ times per frame causes significant overhead and slows down rendering. Simple mathematical derivations that produce strings can bottleneck Canvas updates if not cached.
 **Action:** Implemented a simple cache using `Map` to store previously calculated colors for distinct arc distances. Because the maximum number of distinct distances is very small (bounded by the number of chapters, 1189), caching the resulting `hsla` string drastically reduces rendering time while maintaining low memory overhead.
+
+## 2026-05-20 - Viewport Frustum Culling for Canvas Over-draw
+**Learning:** Issuing `beginPath`, `stroke`, and `fillRect` commands for elements outside the visible viewport forces the browser's Canvas API to perform unnecessary calculations and GPU passes, significantly degrading performance when zooming into large datasets (e.g., 63,000 arcs).
+**Action:** Implemented 1D bounding-box culling (`screenMinX` and `screenMaxX`) based on the current zoom transform. By checking if an arc's horizontal extent or a bar's position falls outside these bounds before issuing drawing commands, rendering time is drastically reduced during high-zoom states.

@@ -26,6 +26,10 @@ self.onmessage = function(e) {
         const k = transform.k;
         const bottomY = height - 40;
 
+        // Viewport culling boundaries
+        const screenMinX = -transform.x / transform.k;
+        const screenMaxX = (width - transform.x) / transform.k;
+
         const focusChapter = pinnedChapter !== null ? pinnedChapter : hoveredChapter;
         const isHovering = focusChapter !== null || hoveredArc !== null;
 
@@ -56,6 +60,17 @@ self.onmessage = function(e) {
         }
 
         visibleArcs.forEach(arc => {
+            const p1 = chapterPositions[arc.source].centerX;
+            const p2 = chapterPositions[arc.target].centerX;
+
+            const midX = (p1 + p2) / 2;
+            const rX = Math.abs(p2 - p1) / 2;
+
+            // Viewport culling check
+            if (midX + rX < screenMinX || midX - rX > screenMaxX) {
+                return;
+            }
+
             const isArcFocus = (focusChapter !== null && (arc.source === focusChapter || arc.target === focusChapter)) ||
                                (hoveredArc !== null && hoveredArc.source === arc.source && hoveredArc.target === arc.target);
 
@@ -68,11 +83,6 @@ self.onmessage = function(e) {
                 self.ctx.strokeStyle = getArcColor(arc.distance) + baseAlpha + ')';
             }
 
-            const p1 = chapterPositions[arc.source].centerX;
-            const p2 = chapterPositions[arc.target].centerX;
-
-            const midX = (p1 + p2) / 2;
-            const rX = Math.abs(p2 - p1) / 2;
             const maxR = (chapterPositions[chapterPositions.length-1].centerX - chapterPositions[0].centerX) / 2;
             const rY = (rX / maxR) * (bottomY - 20);
 
@@ -94,6 +104,16 @@ self.onmessage = function(e) {
 
         self.data.chapters.forEach((ch, idx) => {
             const pos = chapterPositions[idx];
+
+            // Check visibility before doing anything
+            if (pos.x + pos.width < screenMinX || pos.x > screenMaxX) {
+                // We still need to keep track of book color toggle
+                if (ch.bookId !== lastBookId) {
+                    bookColorToggle = !bookColorToggle;
+                    lastBookId = ch.bookId;
+                }
+                return;
+            }
 
             if (ch.bookId !== lastBookId) {
                 bookColorToggle = !bookColorToggle;
