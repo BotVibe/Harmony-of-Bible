@@ -24,3 +24,7 @@
 ## 2026-05-20 - Object Property Caching for Static Geometry
 **Learning:** Performing multiple array lookups and arithmetic operations inside a 60,000+ iteration hot loop to calculate geometry that rarely changes (only on window resize) is highly inefficient.
 **Action:** Pre-calculated static geometric properties (`midX` and `rX`) for all arcs once during the initial position calculation phase and attached them directly to the arc objects. Reading these cached properties directly in the render loop eliminates hundreds of thousands of redundant array lookups and arithmetic operations per frame, drastically improving loop performance.
+
+## 2026-05-20 - Debouncing D3 DOM Updates and Heavy Aggregation
+**Learning:** Rebuilding SVG charts via D3 involves destroying DOM elements (`textContent = ''`) and iterating over massive datasets (e.g., 60,000+ items to count frequencies) synchronously. When tied directly to rapid UI state changes (like dragging a distance slider), this synchronously blocks the main thread, leading to a frozen UI.
+**Action:** Implemented a debounce mechanism using `setTimeout` for the D3 `render` pipeline in `js/stats.js`. The `executeRender` function now waits until rapid UI changes settle before executing the heavy O(N) aggregations and DOM paints, keeping the main thread responsive. Initial load is flagged to run immediately.

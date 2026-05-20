@@ -195,7 +195,7 @@ class App {
 
             this.setupUI();
             this.setupInteractivity();
-            this.updateStats();
+            this.updateStats(true); // immediate initial render
 
         } catch (err) {
             console.error(err);
@@ -423,9 +423,10 @@ class App {
         this.tooltip.classList.add('hidden');
     }
 
-    updateStats() {
+    updateStats(immediate = false) {
         document.getElementById('stat-visible-arcs').textContent = this.data.arcs.length.toLocaleString();
-        this.stats.render(this.data);
+        // Force immediate render on first load, debounce otherwise
+        this.stats.render(this.data, immediate);
     }
 
     showSearchError(message) {

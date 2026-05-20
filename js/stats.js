@@ -5,13 +5,27 @@ class StatsCharts {
             'NT-NT': '#00008b',
             'OT-NT': '#8b008b'
         };
+        this.renderTimeout = null;
     }
 
-    render(data) {
-        const bookMap = new Map(data.books.map(b => [b.id, b]));
-        this.renderDonut(data, bookMap);
-        this.renderTopBooks(data, bookMap);
-        this.renderTopChapters(data);
+    render(data, immediate = false) {
+        if (this.renderTimeout) {
+            clearTimeout(this.renderTimeout);
+        }
+
+        const executeRender = () => {
+            const bookMap = new Map(data.books.map(b => [b.id, b]));
+            this.renderDonut(data, bookMap);
+            this.renderTopBooks(data, bookMap);
+            this.renderTopChapters(data);
+        };
+
+        if (immediate) {
+            executeRender();
+        } else {
+            // Debounce rendering to avoid blocking UI during rapid filter changes
+            this.renderTimeout = setTimeout(executeRender, 200);
+        }
     }
 
     renderDonut(data, bookMap) {
