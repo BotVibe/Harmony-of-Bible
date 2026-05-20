@@ -339,6 +339,10 @@ class Renderer {
             this.ctx.lineWidth = 0.5 / k; // keep line width somewhat constant in screen space
             if (this.ctx.lineWidth < 0.1) this.ctx.lineWidth = 0.1;
 
+            // Hoist invariant calculations out of the hot loop
+            const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
+            const rYFactor = (bottomY - 20) / maxR;
+
             this.visibleArcs.forEach(arc => {
                 const p1 = this.chapterPositions[arc.source].centerX;
                 const p2 = this.chapterPositions[arc.target].centerX;
@@ -365,8 +369,7 @@ class Renderer {
                 }
 
                 // Arc height depends on distance, max height is ~70% of available space above axis
-                const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
-                const rY = (rX / maxR) * (bottomY - 20);
+                const rY = rX * rYFactor;
 
                 this.ctx.beginPath();
                 this.ctx.ellipse(midX, bottomY, rX, Math.max(rY, 1), 0, Math.PI, 0);

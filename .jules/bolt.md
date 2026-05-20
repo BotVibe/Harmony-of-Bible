@@ -16,3 +16,7 @@
 ## 2026-05-20 - Viewport Frustum Culling for Canvas Over-draw
 **Learning:** Issuing `beginPath`, `stroke`, and `fillRect` commands for elements outside the visible viewport forces the browser's Canvas API to perform unnecessary calculations and GPU passes, significantly degrading performance when zooming into large datasets (e.g., 63,000 arcs).
 **Action:** Implemented 1D bounding-box culling (`screenMinX` and `screenMaxX`) based on the current zoom transform. By checking if an arc's horizontal extent or a bar's position falls outside these bounds before issuing drawing commands, rendering time is drastically reduced during high-zoom states.
+
+## 2026-05-20 - Loop Invariant Code Motion in Canvas rendering
+**Learning:** Calculating constant values (like maximum screen radius or vertical scaling factors based on dataset boundaries) *inside* a `forEach` loop spanning 60,000+ items forces the JS engine to execute identical math operations and array lookups tens of thousands of times per frame.
+**Action:** Identified loop-invariant mathematical calculations (`maxR` and `rYFactor`) and hoisted them outside of the hot render loop in both the main thread and the Web Worker. This eliminates redundant O(N) operations, further streamlining the per-frame rendering pipeline.
