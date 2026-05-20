@@ -58,7 +58,19 @@ class Renderer {
         this.visibleArcs = [];
         this.arcPaths = []; // For spatial indexing
 
+        this.renderPending = false;
+
         this.init();
+    }
+
+    requestRender() {
+        if (!this.renderPending) {
+            this.renderPending = true;
+            window.requestAnimationFrame(() => {
+                this.renderPending = false;
+                this.render();
+            });
+        }
     }
 
     init() {
@@ -80,38 +92,38 @@ class Renderer {
         this.ctx.scale(dpr, dpr);
 
         this.calculatePositions();
-        this.render();
+        this.requestRender();
     }
 
     setTransform(transform) {
         this.transform = transform;
-        this.render();
+        this.requestRender();
     }
 
     setFilters(filters) {
         this.filters = { ...this.filters, ...filters };
         this.applyFilters();
-        this.render();
+        this.requestRender();
         return this.visibleArcs.length;
     }
 
     setHoveredChapter(idx) {
         if (this.hoveredChapter !== idx) {
             this.hoveredChapter = idx;
-            this.render();
+            this.requestRender();
         }
     }
 
     setHoveredArc(arc) {
         if (this.hoveredArc !== arc) {
             this.hoveredArc = arc;
-            this.render();
+            this.requestRender();
         }
     }
 
     setPinnedChapter(idx) {
         this.pinnedChapter = idx;
-        this.render();
+        this.requestRender();
     }
 
     calculatePositions() {

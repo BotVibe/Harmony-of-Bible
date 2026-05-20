@@ -1,5 +1,9 @@
 const Renderer = require('../js/renderer.js');
 
+// Mock requestAnimationFrame for tests
+global.window = global.window || {};
+global.window.requestAnimationFrame = (callback) => setTimeout(callback, 0);
+
 /**
  * Unit tests for Renderer.getArcColor
  */
@@ -99,7 +103,10 @@ function testSpatialIndex() {
             transferControlToOffscreen: () => ({})
         })
     };
-    global.window = { addEventListener: () => {} };
+    global.window = {
+        addEventListener: () => {},
+        requestAnimationFrame: (cb) => setTimeout(cb, 0)
+    };
     global.d3 = { zoomIdentity: { x: 0, y: 0, k: 1 } };
     global.Worker = class { postMessage() {} };
 
@@ -166,7 +173,10 @@ function testGetChapterAtScreenPos() {
             transferControlToOffscreen: () => ({})
         })
     };
-    global.window = { addEventListener: () => {} };
+    global.window = {
+        addEventListener: () => {},
+        requestAnimationFrame: (cb) => setTimeout(cb, 0)
+    };
     global.d3 = { zoomIdentity: { x: 0, y: 0, k: 1 } };
     global.Worker = class { postMessage() {} };
 
@@ -285,7 +295,10 @@ function testGetArcAtScreenPos() {
             transferControlToOffscreen: () => ({})
         })
     };
-    global.window = { addEventListener: () => {} };
+    global.window = {
+        addEventListener: () => {},
+        requestAnimationFrame: (cb) => setTimeout(cb, 0)
+    };
     global.d3 = { zoomIdentity: { x: 0, y: 0, k: 1 } };
     global.Worker = class { postMessage() {} };
 
