@@ -20,3 +20,7 @@
 ## 2026-05-20 - Loop Invariant Code Motion in Canvas rendering
 **Learning:** Calculating constant values (like maximum screen radius or vertical scaling factors based on dataset boundaries) *inside* a `forEach` loop spanning 60,000+ items forces the JS engine to execute identical math operations and array lookups tens of thousands of times per frame.
 **Action:** Identified loop-invariant mathematical calculations (`maxR` and `rYFactor`) and hoisted them outside of the hot render loop in both the main thread and the Web Worker. This eliminates redundant O(N) operations, further streamlining the per-frame rendering pipeline.
+
+## 2026-05-20 - Object Property Caching for Static Geometry
+**Learning:** Performing multiple array lookups and arithmetic operations inside a 60,000+ iteration hot loop to calculate geometry that rarely changes (only on window resize) is highly inefficient.
+**Action:** Pre-calculated static geometric properties (`midX` and `rX`) for all arcs once during the initial position calculation phase and attached them directly to the arc objects. Reading these cached properties directly in the render loop eliminates hundreds of thousands of redundant array lookups and arithmetic operations per frame, drastically improving loop performance.

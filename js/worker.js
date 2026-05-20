@@ -64,11 +64,8 @@ self.onmessage = function(e) {
         const rYFactor = (bottomY - 20) / maxR;
 
         visibleArcs.forEach(arc => {
-            const p1 = chapterPositions[arc.source].centerX;
-            const p2 = chapterPositions[arc.target].centerX;
-
-            const midX = (p1 + p2) / 2;
-            const rX = Math.abs(p2 - p1) / 2;
+            const midX = arc.midX;
+            const rX = arc.rX;
 
             // Viewport culling check
             if (midX + rX < screenMinX || midX - rX > screenMaxX) {
