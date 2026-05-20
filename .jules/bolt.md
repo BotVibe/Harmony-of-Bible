@@ -28,3 +28,7 @@
 ## 2026-05-20 - Debouncing D3 DOM Updates and Heavy Aggregation
 **Learning:** Rebuilding SVG charts via D3 involves destroying DOM elements (`textContent = ''`) and iterating over massive datasets (e.g., 60,000+ items to count frequencies) synchronously. When tied directly to rapid UI state changes (like dragging a distance slider), this synchronously blocks the main thread, leading to a frozen UI.
 **Action:** Implemented a debounce mechanism using `setTimeout` for the D3 `render` pipeline in `js/stats.js`. The `executeRender` function now waits until rapid UI changes settle before executing the heavy O(N) aggregations and DOM paints, keeping the main thread responsive. Initial load is flagged to run immediately.
+
+## 2026-05-20 - Canvas Throttling via requestAnimationFrame
+**Learning:** Continuous user input events (like `zoom` and `mousemove` driven by D3 or raw DOM events) can fire significantly faster than the display's refresh rate (60-144Hz). If each event synchronously forces a full canvas redraw (iterating over 60k+ items), the CPU is saturated rendering frames that the user will never even see, causing severe stuttering.
+**Action:** Replaced direct synchronous calls to `render()` with a `requestRender()` method that utilizes `window.requestAnimationFrame()`. This effectively throttles the rendering pipeline, ensuring the canvas is never re-drawn faster than the browser's optimal frame rate, saving massive amounts of redundant processing during high-frequency interaction.
