@@ -135,6 +135,16 @@ class Renderer {
             currentX += width;
             return pos;
         });
+
+        // Pre-calculate static geometry for all arcs
+        if (this.data.arcs) {
+            this.data.arcs.forEach(arc => {
+                const p1 = this.chapterPositions[arc.source].centerX;
+                const p2 = this.chapterPositions[arc.target].centerX;
+                arc.midX = (p1 + p2) / 2;
+                arc.rX = Math.abs(p2 - p1) / 2;
+            });
+        }
     }
 
     applyFilters() {
@@ -180,11 +190,8 @@ class Renderer {
         this.spatialMaxR = maxR;
 
         this.visibleArcs.forEach(arc => {
-            const p1 = this.chapterPositions[arc.source].centerX;
-            const p2 = this.chapterPositions[arc.target].centerX;
-
-            const midX = (p1 + p2) / 2;
-            const rX = Math.abs(p2 - p1) / 2;
+            const midX = arc.midX;
+            const rX = arc.rX;
 
             let binX = Math.floor((midX / this.width) * GRID_SIZE);
             if (binX < 0) binX = 0;
@@ -344,11 +351,8 @@ class Renderer {
             const rYFactor = (bottomY - 20) / maxR;
 
             this.visibleArcs.forEach(arc => {
-                const p1 = this.chapterPositions[arc.source].centerX;
-                const p2 = this.chapterPositions[arc.target].centerX;
-
-                const midX = (p1 + p2) / 2;
-                const rX = Math.abs(p2 - p1) / 2;
+                const midX = arc.midX;
+                const rX = arc.rX;
 
                 // Viewport culling check
                 if (midX + rX < screenMinX || midX - rX > screenMaxX) {
