@@ -59,6 +59,10 @@ self.onmessage = function(e) {
             return colorStr;
         }
 
+        // Hoist invariant calculations out of the hot loop
+        const maxR = (chapterPositions[chapterPositions.length-1].centerX - chapterPositions[0].centerX) / 2;
+        const rYFactor = (bottomY - 20) / maxR;
+
         visibleArcs.forEach(arc => {
             const p1 = chapterPositions[arc.source].centerX;
             const p2 = chapterPositions[arc.target].centerX;
@@ -83,8 +87,7 @@ self.onmessage = function(e) {
                 self.ctx.strokeStyle = getArcColor(arc.distance) + baseAlpha + ')';
             }
 
-            const maxR = (chapterPositions[chapterPositions.length-1].centerX - chapterPositions[0].centerX) / 2;
-            const rY = (rX / maxR) * (bottomY - 20);
+            const rY = rX * rYFactor;
 
             self.ctx.beginPath();
             self.ctx.ellipse(midX, bottomY, rX, Math.max(rY, 1), 0, Math.PI, 0);
