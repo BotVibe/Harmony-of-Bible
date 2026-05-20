@@ -307,6 +307,10 @@ class Renderer {
         const bottomY = this.height - 40;
         const maxBarHeight = 30; // Max height for a chapter bar
 
+        // Viewport culling boundaries
+        const screenMinX = -this.transform.x / this.transform.k;
+        const screenMaxX = (this.width - this.transform.x) / this.transform.k;
+
         // 1. Draw Arcs
         const focusChapter = this.pinnedChapter !== null ? this.pinnedChapter : this.hoveredChapter;
         const isHovering = focusChapter !== null || this.hoveredArc !== null;
@@ -336,6 +340,17 @@ class Renderer {
             if (this.ctx.lineWidth < 0.1) this.ctx.lineWidth = 0.1;
 
             this.visibleArcs.forEach(arc => {
+                const p1 = this.chapterPositions[arc.source].centerX;
+                const p2 = this.chapterPositions[arc.target].centerX;
+
+                const midX = (p1 + p2) / 2;
+                const rX = Math.abs(p2 - p1) / 2;
+
+                // Viewport culling check
+                if (midX + rX < screenMinX || midX - rX > screenMaxX) {
+                    return;
+                }
+
                 const isArcFocus = (focusChapter !== null && (arc.source === focusChapter || arc.target === focusChapter)) ||
                                    (this.hoveredArc === arc);
 
@@ -349,11 +364,6 @@ class Renderer {
                     this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + baseAlpha + ')';
                 }
 
-                const p1 = this.chapterPositions[arc.source].centerX;
-                const p2 = this.chapterPositions[arc.target].centerX;
-
-                const midX = (p1 + p2) / 2;
-                const rX = Math.abs(p2 - p1) / 2;
                 // Arc height depends on distance, max height is ~70% of available space above axis
                 const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
                 const rY = (rX / maxR) * (bottomY - 20);
@@ -376,6 +386,16 @@ class Renderer {
 
             this.data.chapters.forEach((ch, idx) => {
                 const pos = this.chapterPositions[idx];
+
+                // Check visibility before doing anything
+                if (pos.x + pos.width < screenMinX || pos.x > screenMaxX) {
+                    // We still need to keep track of book color toggle
+                    if (ch.bookId !== lastBookId) {
+                        bookColorToggle = !bookColorToggle;
+                        lastBookId = ch.bookId;
+                    }
+                    return;
+                }
 
                 if (ch.bookId !== lastBookId) {
                     bookColorToggle = !bookColorToggle;
