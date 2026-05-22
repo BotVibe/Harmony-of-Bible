@@ -33,6 +33,7 @@ class Renderer {
         this.width = 0;
         this.height = 0;
         this.transform = d3.zoomIdentity;
+        this.viewMode = 'arc';
 
         // Colors
         this.bgDark = '#0f0f23';
@@ -98,6 +99,16 @@ class Renderer {
     setTransform(transform) {
         this.transform = transform;
         this.requestRender();
+    }
+
+        setViewMode(mode) {
+        if (this.viewMode !== mode) {
+            this.viewMode = mode;
+            if (this.ctx) {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+            }
+            this.requestRender();
+        }
     }
 
     setFilters(filters) {
@@ -313,22 +324,25 @@ class Renderer {
         }
 
         if (this.chapterPositions.length === 0) return;
+        if (this.viewMode === 'matrix') { this.renderMatrix(); return; }
+        if (this.viewMode === 'chord') { this.renderChord(); return; }
+        if (this.viewMode === 'map') { this.renderMap(); return; }
 
         this.ctx.save();
 
         // Apply transform
-        this.ctx.translate(this.transform.x, this.transform.y);
+        this.ctx.translate(this.transform.x, 0);
         this.ctx.scale(this.transform.k, this.transform.k);
 
         const k = this.transform.k;
 
         // Base line / X-axis config
-        const bottomY = this.height - 40;
-        const maxBarHeight = 30; // Max height for a chapter bar
+        const bottomY = (this.height - 80) / this.transform.k;
+        const maxBarHeight = 60 / k; // Max height for a chapter bar
 
         // Viewport culling boundaries
-        const screenMinX = -this.transform.x / this.transform.k;
-        const screenMaxX = (this.width - this.transform.x) / this.transform.k;
+        const screenMinX = -this.transform.x / k;
+        const screenMaxX = (this.width - this.transform.x) / k;
 
         // 1. Draw Arcs
         const focusChapter = this.pinnedChapter !== null ? this.pinnedChapter : this.hoveredChapter;
@@ -341,7 +355,7 @@ class Renderer {
                     width: this.width,
                     height: this.height,
                     transform: this.transform,
-                    visibleArcs: this.visibleArcs,
+                    visibleArcs: this.visibleArcs, viewMode: this.viewMode,
                     chapterPositions: this.chapterPositions,
                     hoveredChapter: this.hoveredChapter,
                     pinnedChapter: this.pinnedChapter,
@@ -485,9 +499,9 @@ class Renderer {
         if (!this.arcSpatialIndex) return null;
 
         const worldX = (mouseX - this.transform.x) / this.transform.k;
-        const worldY = (mouseY - this.transform.y) / this.transform.k;
+        const worldY = mouseY / this.transform.k;
 
-        const bottomY = this.height - 40;
+        const bottomY = (this.height - 80) / this.transform.k;
         if (worldY > bottomY) return null;
 
         const maxR = this.spatialMaxR || (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
@@ -532,6 +546,67 @@ class Renderer {
         }
 
         return closestArc;
+    }
+    renderMap() {
+        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: [], chapterPositions: [], hoveredChapter: null, pinnedChapter: null, hoveredArc: null, viewMode: 'map' } }); return; }
+        if (!this.ctx) return;
+        this.ctx.save();
+        this.ctx.translate(this.transform.x, this.transform.y); this.ctx.scale(this.transform.k, this.transform.k);
+        const cx = this.width / 2; const cy = this.height / 2;
+        this.ctx.fillStyle = '#223344'; this.ctx.fillRect(-this.width, -this.height, this.width*3, this.height*3);
+        this.ctx.fillStyle = '#112211'; this.ctx.beginPath(); this.ctx.moveTo(cx - 200, cy + 200); this.ctx.lineTo(cx - 150, cy); this.ctx.lineTo(cx - 50, cy - 100); this.ctx.lineTo(cx + 100, cy - 120); this.ctx.lineTo(cx + 300, cy + 50); this.ctx.lineTo(cx + 300, cy + 300); this.ctx.lineTo(cx - 200, cy + 300); this.ctx.fill();
+        this.ctx.fillStyle = '#e94560'; this.ctx.beginPath(); this.ctx.arc(cx - 80, cy + 20, 5/this.transform.k, 0, Math.PI*2); this.ctx.fill();
+        this.ctx.fillStyle = '#ffffff'; this.ctx.font = `${12/this.transform.k}px Arial`; this.ctx.fillText("Jerusalem (Mock)", cx - 70, cy + 25);
+        this.ctx.fillStyle = 'rgba(255,255,255,0.7)'; this.ctx.font = `${16/this.transform.k}px Arial`; this.ctx.fillText("Geo-Daten nicht lokal verfügbar.", cx - 150, cy - 150);
+        this.ctx.restore();
+    }
+    renderMatrix() {
+        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'matrix' } }); return; }
+        if (!this.ctx) return;
+        this.ctx.save();
+        const numChapters = this.chapterPositions.length; const padding = 40; const size = Math.min(this.width, this.height) - padding * 2; const cellSize = size / numChapters;
+        const offsetX = (this.width - size) / 2; const offsetY = (this.height - size) / 2;
+        this.ctx.translate(this.transform.x, this.transform.y); this.ctx.scale(this.transform.k, this.transform.k);
+        this.ctx.fillStyle = '#16213e'; this.ctx.fillRect(offsetX, offsetY, size, size);
+        this.ctx.strokeStyle = '#2a2a4e'; this.ctx.lineWidth = 1 / this.transform.k; this.ctx.strokeRect(offsetX, offsetY, size, size);
+        const focusChapter = this.pinnedChapter !== null ? this.pinnedChapter : this.hoveredChapter;
+        this.visibleArcs.forEach(arc => {
+            const sx = offsetX + arc.source * cellSize; const sy = offsetY + arc.target * cellSize;
+            const isArcFocus = (focusChapter !== null && (arc.source === focusChapter || arc.target === focusChapter)) || (this.hoveredArc === arc);
+            this.ctx.fillStyle = Renderer.getArcColor(arc.distance) + '1.0)';
+            let currentCellSize = cellSize;
+            if (isArcFocus) { this.ctx.fillStyle = '#ffffff'; currentCellSize = cellSize * 2; } else { currentCellSize = Math.max(cellSize, 1 / this.transform.k); }
+            this.ctx.fillRect(sx, sy, currentCellSize, currentCellSize); this.ctx.fillRect(offsetX + arc.target * cellSize, offsetY + arc.source * cellSize, currentCellSize, currentCellSize);
+        });
+        this.ctx.restore();
+    }
+    renderChord() {
+        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'chord' } }); return; }
+        if (!this.ctx) return;
+        this.ctx.save();
+        this.ctx.translate(this.transform.x, this.transform.y); this.ctx.scale(this.transform.k, this.transform.k);
+        const centerX = this.width / 2; const centerY = this.height / 2; const radius = Math.min(this.width, this.height) / 2 - 60;
+        const numChapters = this.chapterPositions.length; const angleStep = (Math.PI * 2) / numChapters;
+        const focusChapter = this.pinnedChapter !== null ? this.pinnedChapter : this.hoveredChapter; const isHovering = focusChapter !== null || this.hoveredArc !== null;
+        const coords = new Float32Array(numChapters * 2);
+        for(let i=0; i<numChapters; i++) { const angle = i * angleStep - Math.PI / 2; coords[i*2] = centerX + Math.cos(angle) * radius; coords[i*2+1] = centerY + Math.sin(angle) * radius; }
+        this.ctx.lineWidth = 0.5 / this.transform.k; let baseAlpha = 0.1; if (this.transform.k > 2) baseAlpha = 0.3;
+        this.visibleArcs.forEach(arc => {
+            const isArcFocus = (focusChapter !== null && (arc.source === focusChapter || arc.target === focusChapter)) || (this.hoveredArc === arc);
+            if (isHovering && !isArcFocus) { this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + '0.02)'; } else if (isArcFocus) { this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + '1.0)'; this.ctx.lineWidth = 1.5 / this.transform.k; } else { this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + baseAlpha + ')'; }
+            const sx = coords[arc.source*2]; const sy = coords[arc.source*2+1]; const tx = coords[arc.target*2]; const ty = coords[arc.target*2+1];
+            this.ctx.beginPath(); this.ctx.moveTo(sx, sy); this.ctx.quadraticCurveTo(centerX, centerY, tx, ty); this.ctx.stroke();
+            if (isArcFocus) { this.ctx.lineWidth = Math.max(0.5 / this.transform.k, 0.1); }
+        });
+        this.ctx.lineWidth = 5 / this.transform.k; let lastBookId = -1; let bookColorToggle = false;
+        for (let i = 0; i < numChapters; i++) {
+            const ch = this.data.chapters[i];
+            if (ch.bookId !== lastBookId) { bookColorToggle = !bookColorToggle; lastBookId = ch.bookId; }
+            this.ctx.strokeStyle = bookColorToggle ? this.barLight : this.barDark; if (i === focusChapter) { this.ctx.strokeStyle = '#e94560'; }
+            const angle1 = i * angleStep - Math.PI / 2; const angle2 = (i + 1) * angleStep - Math.PI / 2;
+            this.ctx.beginPath(); this.ctx.arc(centerX, centerY, radius + 5/this.transform.k, angle1, angle2); this.ctx.stroke();
+        }
+        this.ctx.restore();
     }
 }
 if (typeof module !== 'undefined' && module.exports) {
