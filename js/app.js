@@ -346,7 +346,7 @@ class App {
         });
 
         this.sidebarToggle.addEventListener('click', () => {
-            setTimeout(() => { if (this.renderer) { this.renderer.resize(); } }, 300);
+
             this.sidebar.classList.toggle('collapsed');
             this.sidebarToggle.textContent = this.sidebar.classList.contains('collapsed') ? '◀' : '▶';
         });
