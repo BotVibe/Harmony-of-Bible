@@ -14,7 +14,8 @@ class App {
         this.searchError = document.getElementById('search-error');
 
 
-        this.lang = 'de'; // Default language
+        const langSelect = document.getElementById('lang-select');
+        this.lang = langSelect ? langSelect.value : 'de'; // Default language
 
         this.translations = {
             de: {
@@ -35,7 +36,13 @@ class App {
                 letters: 'Briefe',
                 revelation: 'Offenbarung',
                 searchPlaceholder: 'Suchen (z.B. Joh 3)',
-                resetZoom: 'Reset Zoom',
+                resetZoom: 'Zoom zurücksetzen',
+                resetSelection: 'Auswahl aufheben',
+                dataSource: 'Datenquelle',
+                viewArc: 'Bögen (Arc)',
+                viewMatrix: 'Matrix (Heatmap)',
+                viewChord: 'Chord (Kreis)',
+                viewMap: 'Karte (Geo)',
                 loading: 'Lade Daten...',
                 legendNear: 'Nah',
                 legendFar: 'Weit',
@@ -66,6 +73,12 @@ class App {
                 revelation: 'Revelation',
                 searchPlaceholder: 'Search (e.g. Joh 3)',
                 resetZoom: 'Reset Zoom',
+                resetSelection: 'Reset Selection',
+                dataSource: 'Data Source',
+                viewArc: 'Arcs',
+                viewMatrix: 'Matrix (Heatmap)',
+                viewChord: 'Chord (Circle)',
+                viewMap: 'Map (Geo)',
                 loading: 'Loading data...',
                 legendNear: 'Near',
                 legendFar: 'Far',
@@ -96,6 +109,12 @@ class App {
                 revelation: 'Apocalisse',
                 searchPlaceholder: 'Cerca (es. Giov 3)',
                 resetZoom: 'Reimposta Zoom',
+                resetSelection: 'Reimposta Selezione',
+                dataSource: 'Fonte Dati',
+                viewArc: 'Archi',
+                viewMatrix: 'Matrice (Heatmap)',
+                viewChord: 'Corda (Cerchio)',
+                viewMap: 'Mappa (Geo)',
                 loading: 'Caricamento dati...',
                 legendNear: 'Vicino',
                 legendFar: 'Lontano',
@@ -126,6 +145,12 @@ class App {
                 revelation: 'Apocalypse',
                 searchPlaceholder: 'Rechercher (ex. Jean 3)',
                 resetZoom: 'Réinitialiser Zoom',
+                resetSelection: 'Réinitialiser Sélection',
+                dataSource: 'Source de Données',
+                viewArc: 'Arcs',
+                viewMatrix: 'Matrice (Heatmap)',
+                viewChord: 'Corde (Cercle)',
+                viewMap: 'Carte (Géo)',
                 loading: 'Chargement des données...',
                 legendNear: 'Proche',
                 legendFar: 'Loin',
@@ -141,6 +166,40 @@ class App {
 
         this.updateUIStrings();
 
+
+                document.getElementById('reset-selection').addEventListener('click', () => {
+            this.renderer.setPinnedChapter(null);
+            this.renderer.setHoveredChapter(null);
+            this.renderer.setHoveredArc(null);
+            this.hideTooltip();
+            document.getElementById('chapter-details').classList.add('hidden');
+            if(document.querySelector('#acc-stats')) {
+                document.querySelector('#acc-stats .accordion-body').classList.remove('hidden');
+                document.querySelector('#acc-details .accordion-body').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('update-data').addEventListener('click', () => {
+            window.open('https://github.com/openbibleinfo/CrossReferences', '_blank');
+        });
+
+        const vms = document.getElementById('view-mode-select');
+        if(vms) { vms.addEventListener('change', (e) => {
+            if (this.renderer) { this.renderer.setViewMode(e.target.value); }
+        });}
+
+        const accStats = document.getElementById('acc-stats-header');
+        if(accStats) {
+            accStats.addEventListener('click', () => {
+                document.querySelector('#acc-stats .accordion-body').classList.toggle('hidden');
+            });
+        }
+        const accDetails = document.getElementById('acc-details-header');
+        if(accDetails) {
+            accDetails.addEventListener('click', () => {
+                document.querySelector('#acc-details .accordion-body').classList.toggle('hidden');
+            });
+        }
 
         this.init();
     }
@@ -287,6 +346,7 @@ class App {
         });
 
         this.sidebarToggle.addEventListener('click', () => {
+            setTimeout(() => { if (this.renderer) { this.renderer.resize(); } }, 300);
             this.sidebar.classList.toggle('collapsed');
             this.sidebarToggle.textContent = this.sidebar.classList.contains('collapsed') ? '◀' : '▶';
         });
@@ -335,6 +395,12 @@ class App {
 
             // Check if clicked in bottom area (bars)
             const isBottomArea = mouseY > this.renderer.height - 80;
+        if (this.renderer.viewMode === "map" || this.renderer.viewMode === "matrix" || this.renderer.viewMode === "chord") {
+            this.renderer.setHoveredChapter(null);
+            this.renderer.setHoveredArc(null);
+            this.hideTooltip();
+            return;
+        }
             if (isBottomArea) {
                 const chapterIdx = this.renderer.getChapterAtScreenPos(mouseX);
                 if (chapterIdx !== null) {
@@ -360,6 +426,12 @@ class App {
         const mouseY = e.clientY - rect.top;
 
         const isBottomArea = mouseY > this.renderer.height - 80;
+        if (this.renderer.viewMode === "map" || this.renderer.viewMode === "matrix" || this.renderer.viewMode === "chord") {
+            this.renderer.setHoveredChapter(null);
+            this.renderer.setHoveredArc(null);
+            this.hideTooltip();
+            return;
+        }
 
         if (isBottomArea) {
             this.renderer.setHoveredArc(null);
@@ -481,6 +553,25 @@ class App {
         });
 
         details.classList.remove('hidden');
+        const accStatsBody = document.querySelector('#acc-stats .accordion-body');
+        if (accStatsBody) accStatsBody.classList.add('hidden');
+        const accDetailsBody = document.querySelector('#acc-details .accordion-body');
+        if (accDetailsBody) accDetailsBody.classList.remove('hidden');
+
+        const textBox = document.getElementById('chapter-text');
+        if (textBox) {
+            textBox.textContent = 'Loading text...';
+            const shortName = ch.shortName;
+            if (window.BibleAPI) {
+                window.BibleAPI.fetchChapterText(shortName, ch.chapterNum, this.lang).then(text => {
+                    if (text) {
+                        textBox.textContent = text;
+                    } else {
+                        textBox.textContent = 'Text not available for this translation.';
+                    }
+                });
+            }
+        }
     }
 }
 
