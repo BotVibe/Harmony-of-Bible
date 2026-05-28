@@ -31,16 +31,20 @@ body {
 
 /* Header / Control Panel */
 #control-panel {
-    height: 60px;
+    min-height: 60px;
     background-color: var(--panel-bg);
     display: flex;
     align-items: center;
-    padding: 0 20px;
+    padding: 10px 20px;
     gap: 15px;
     border-bottom: 1px solid var(--border-color);
-    z-index: 10;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    z-index: 40;
+    flex-wrap: wrap;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
 
 .control-group {
@@ -96,7 +100,11 @@ button.active {
 /* Main Area */
 main {
     flex: 1;
-    position: relative;
+    position: absolute;
+    top: 60px;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
 }
 
@@ -202,14 +210,17 @@ canvas:active {
     width: 300px;
     background-color: var(--sidebar-bg);
     border-left: 1px solid var(--border-color);
-    position: relative;
-    transition: margin-right 0.3s ease;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    transition: transform 0.3s ease;
     z-index: 30;
     display: flex;
 }
 
 #sidebar.collapsed {
-    margin-right: -300px;
+    transform: translateX(300px);
 }
 
 /* Accordion */
@@ -323,4 +334,23 @@ canvas:active {
 
 .hidden {
     display: none !important;
+}
+
+/* Fix Header Overlap on Mobile */
+@media (max-width: 768px) {
+    #control-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 60px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    main {
+        margin-top: 60px; /* Base offset */
+    }
 }
