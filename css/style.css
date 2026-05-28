@@ -120,8 +120,6 @@ canvas:active {
 
 /* Loading Overlay */
 #loading-overlay {
-
-    top: 0; left: 0;
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: rgba(15, 15, 35, 0.9);
@@ -153,7 +151,6 @@ canvas:active {
 
 /* Tooltip */
 #tooltip {
-
     position: absolute;
     background-color: rgba(26, 26, 46, 0.95);
     border: 1px solid var(--border-color);
@@ -175,10 +172,9 @@ canvas:active {
 
 /* Legend */
 #legend {
-
+    position: absolute;
     bottom: 30px;
     left: 20px;
-    position: absolute;
     width: 200px;
     z-index: 20;
     background-color: rgba(22, 33, 62, 0.8);
@@ -203,16 +199,11 @@ canvas:active {
 
 /* Sidebar */
 #sidebar {
-    position: relative;
-    transition: margin-right 0.3s ease;
     width: 300px;
     background-color: var(--sidebar-bg);
     border-left: 1px solid var(--border-color);
-
-
-
-
-
+    position: relative;
+    transition: margin-right 0.3s ease;
     z-index: 30;
     display: flex;
 }
@@ -221,11 +212,20 @@ canvas:active {
     margin-right: -300px;
 }
 
-.sidebar-toggle {
+/* Accordion */
+.accordion { width: 100%; }
+.accordion-item { border-top: 1px solid var(--border-color); }
+.accordion-header { padding: 15px 0; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+.accordion-header:hover { color: var(--accent); }
+.accordion-header span { font-size: 0.8rem; color: var(--text-muted); }
+.accordion-body { padding-bottom: 15px; }
+.accordion-body.hidden { display: none; }
+.bible-text-box { margin-top: 15px; padding: 10px; background-color: rgba(255,255,255,0.05); border-radius: 4px; font-size: 0.85rem; line-height: 1.4; color: #ccc; max-height: 200px; overflow-y: auto; font-style: italic; }
 
+.sidebar-toggle {
+    position: absolute;
     left: -30px;
     top: 20px;
-    position: absolute;
     width: 30px;
     height: 40px;
     background-color: var(--sidebar-bg);
@@ -324,11 +324,3 @@ canvas:active {
 .hidden {
     display: none !important;
 }
-.accordion { width: 100%; }
-.accordion-item { border-top: 1px solid var(--border-color); }
-.accordion-header { padding: 15px 0; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-.accordion-header:hover { color: var(--accent); }
-.accordion-header span { font-size: 0.8rem; color: var(--text-muted); }
-.accordion-body { padding-bottom: 15px; }
-.accordion-body.hidden { display: none; }
-.bible-text-box { margin-top: 15px; padding: 10px; background-color: rgba(255,255,255,0.05); border-radius: 4px; font-size: 0.85rem; line-height: 1.4; color: #ccc; max-height: 200px; overflow-y: auto; font-style: italic; }
