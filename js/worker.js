@@ -176,7 +176,6 @@ self.onmessage = function(e) {
 
         // Hoist invariant calculations out of the hot loop
         const maxR = (chapterPositions[chapterPositions.length-1].centerX - chapterPositions[0].centerX) / 2;
-        const rYFactor = (bottomY - 20) / maxR;
 
         visibleArcs.forEach(arc => {
             const midX = arc.midX;
@@ -199,10 +198,8 @@ self.onmessage = function(e) {
                 self.ctx.strokeStyle = getArcColor(arc.distance) + baseAlpha + ')';
             }
 
-            const rY = rX * rYFactor;
-
             self.ctx.beginPath();
-            self.ctx.ellipse(midX, bottomY, rX, Math.max(rY, 1), 0, Math.PI, 0);
+            self.ctx.arc(midX, bottomY, rX, Math.PI, 0);
             self.ctx.stroke();
 
             if (isArcFocus) {

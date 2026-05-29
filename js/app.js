@@ -312,6 +312,7 @@ class App {
                 if (chapterIdx !== null) {
                     this.renderer.setPinnedChapter(chapterIdx);
                     this.updateSidebarForChapter(chapterIdx);
+                    this.centerOnChapter(chapterIdx);
                     if (this.sidebar.classList.contains('collapsed')) {
                         this.sidebar.classList.remove('collapsed');
                         this.sidebarToggle.textContent = '▶';
@@ -393,27 +394,35 @@ class App {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Check if clicked in bottom area (bars)
-            const isBottomArea = mouseY > this.renderer.height - 80;
-        if (this.renderer.viewMode === "map" || this.renderer.viewMode === "matrix" || this.renderer.viewMode === "chord") {
-            this.renderer.setHoveredChapter(null);
-            this.renderer.setHoveredArc(null);
-            this.hideTooltip();
-            return;
-        }
-            if (isBottomArea) {
-                const chapterIdx = this.renderer.getChapterAtScreenPos(mouseX);
-                if (chapterIdx !== null) {
-                    if (this.renderer.pinnedChapter === chapterIdx) {
-                        this.renderer.setPinnedChapter(null);
-                        document.getElementById('chapter-details').classList.add('hidden');
-                    } else {
-                        this.renderer.setPinnedChapter(chapterIdx);
-                        this.updateSidebarForChapter(chapterIdx);
-                        if (this.sidebar.classList.contains('collapsed')) {
-                            this.sidebar.classList.remove('collapsed');
-                            this.sidebarToggle.textContent = '▶';
-                        }
+            let chapterIdx = null;
+
+            if (this.renderer.viewMode === "map") {
+                this.renderer.setHoveredChapter(null);
+                this.renderer.setHoveredArc(null);
+                this.hideTooltip();
+                return;
+            } else if (this.renderer.viewMode === "matrix") {
+                chapterIdx = this.renderer.getChapterAtScreenPosMatrix(mouseX, mouseY);
+            } else if (this.renderer.viewMode === "chord") {
+                chapterIdx = this.renderer.getChapterAtScreenPosChord(mouseX, mouseY);
+            } else {
+                // Arc view
+                const isBottomArea = mouseY > this.renderer.height - 80;
+                if (isBottomArea) {
+                    chapterIdx = this.renderer.getChapterAtScreenPos(mouseX);
+                }
+            }
+
+            if (chapterIdx !== null) {
+                if (this.renderer.pinnedChapter === chapterIdx) {
+                    this.renderer.setPinnedChapter(null);
+                    document.getElementById('chapter-details').classList.add('hidden');
+                } else {
+                    this.renderer.setPinnedChapter(chapterIdx);
+                    this.updateSidebarForChapter(chapterIdx);
+                    if (this.sidebar.classList.contains('collapsed')) {
+                        this.sidebar.classList.remove('collapsed');
+                        this.sidebarToggle.textContent = '▶';
                     }
                 }
             }
@@ -425,30 +434,48 @@ class App {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        const isBottomArea = mouseY > this.renderer.height - 80;
-        if (this.renderer.viewMode === "map" || this.renderer.viewMode === "matrix" || this.renderer.viewMode === "chord") {
+        if (this.renderer.viewMode === "map") {
             this.renderer.setHoveredChapter(null);
             this.renderer.setHoveredArc(null);
             this.hideTooltip();
             return;
         }
 
-        if (isBottomArea) {
+        let chapterIdx = null;
+        let hoveredArc = null;
+
+        if (this.renderer.viewMode === "matrix") {
+            chapterIdx = this.renderer.getChapterAtScreenPosMatrix(mouseX, mouseY);
+            if (chapterIdx === null) {
+                hoveredArc = this.renderer.getArcAtScreenPosMatrix(mouseX, mouseY);
+            }
+        } else if (this.renderer.viewMode === "chord") {
+            chapterIdx = this.renderer.getChapterAtScreenPosChord(mouseX, mouseY);
+            if (chapterIdx === null) {
+                hoveredArc = this.renderer.getArcAtScreenPosChord(mouseX, mouseY);
+            }
+        } else {
+            // Arc view
+            const isBottomArea = mouseY > this.renderer.height - 80;
+            if (isBottomArea) {
+                chapterIdx = this.renderer.getChapterAtScreenPos(mouseX);
+            } else {
+                hoveredArc = this.renderer.getArcAtScreenPos(mouseX, mouseY);
+            }
+        }
+
+        if (chapterIdx !== null) {
             this.renderer.setHoveredArc(null);
-            const chapterIdx = this.renderer.getChapterAtScreenPos(mouseX);
             if (chapterIdx !== null) {
                 this.renderer.setHoveredChapter(chapterIdx);
                 this.showChapterTooltip(chapterIdx, e.clientX, e.clientY);
                 return;
             }
-        } else {
+        } else if (hoveredArc !== null) {
             this.renderer.setHoveredChapter(null);
-            const hoveredArc = this.renderer.getArcAtScreenPos(mouseX, mouseY);
-            if (hoveredArc) {
-                this.renderer.setHoveredArc(hoveredArc);
-                this.showArcTooltip(hoveredArc, e.clientX, e.clientY);
-                return;
-            }
+            this.renderer.setHoveredArc(hoveredArc);
+            this.showArcTooltip(hoveredArc, e.clientX, e.clientY);
+            return;
         }
 
         this.renderer.setHoveredChapter(null);
@@ -510,6 +537,52 @@ class App {
         this.searchError.classList.add('hidden');
     }
 
+    centerOnChapter(idx) {
+        if (!this.renderer || !this.renderer.chapterPositions.length) return;
+
+        const canvasWidth = this.renderer.width;
+        const canvasHeight = this.renderer.height;
+        const numChapters = this.renderer.chapterPositions.length;
+        const k = this.renderer.transform.k;
+
+        let tx = 0, ty = 0;
+
+        if (this.renderer.viewMode === 'matrix') {
+            const padding = 40;
+            const size = Math.min(canvasWidth, canvasHeight) - padding * 2;
+            const cellSize = size / numChapters;
+            const offsetX = (canvasWidth - size) / 2;
+            const offsetY = (canvasHeight - size) / 2;
+
+            // Center on the diagonal cell for this chapter
+            const cellX = offsetX + idx * cellSize;
+            const cellY = offsetY + idx * cellSize;
+            tx = -cellX * k + canvasWidth / 2;
+            ty = -cellY * k + canvasHeight / 2;
+        } else if (this.renderer.viewMode === 'chord') {
+            const centerX = canvasWidth / 2;
+            const centerY = canvasHeight / 2;
+            const radius = Math.min(canvasWidth, canvasHeight) / 2 - 60;
+            const angleStep = (Math.PI * 2) / numChapters;
+            const angle = idx * angleStep - Math.PI / 2;
+
+            // Center on the edge of the chord ring for this chapter
+            const px = centerX + Math.cos(angle) * radius;
+            const py = centerY + Math.sin(angle) * radius;
+            tx = -px * k + canvasWidth / 2;
+            ty = -py * k + canvasHeight / 2;
+        } else {
+            // Default Arc View
+            const pos = this.renderer.chapterPositions[idx];
+            tx = -pos.centerX * k + canvasWidth / 2;
+            ty = 0; // Don't translate Y in arc view to keep bottom bar visible
+        }
+
+        d3.select('#viz-canvas').transition().duration(750).call(
+            this.zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(k)
+        );
+    }
+
     updateSidebarForChapter(idx) {
         const ch = this.data.chapters[idx];
         const details = document.getElementById('chapter-details');
@@ -542,12 +615,7 @@ class App {
             li.addEventListener('click', () => {
                 this.renderer.setPinnedChapter(targetIdx);
                 this.updateSidebarForChapter(targetIdx);
-                // Try to center the selected chapter
-                const pos = this.renderer.chapterPositions[targetIdx];
-                const x = -pos.centerX * this.renderer.transform.k + this.renderer.width / 2;
-                d3.select('#viz-canvas').transition().duration(750).call(
-                    this.zoom.transform, d3.zoomIdentity.translate(x, 0).scale(this.renderer.transform.k)
-                );
+                this.centerOnChapter(targetIdx);
             });
             list.appendChild(li);
         });

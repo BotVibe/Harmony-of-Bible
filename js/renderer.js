@@ -258,20 +258,18 @@ class Renderer {
     static getArcDistanceToPoint(worldX, worldY, p1, p2, maxR, bottomY, threshold) {
         const midX = (p1 + p2) / 2;
         const rX = Math.abs(p2 - p1) / 2;
-        const rY = Math.max((rX / maxR) * (bottomY - 20), 1);
 
         if (worldX < midX - rX - threshold || worldX > midX + rX + threshold) return null;
-        if (worldY < bottomY - rY - threshold) return null;
+        if (worldY < bottomY - rX - threshold) return null;
 
-        const arcDx = (worldX - midX) / rX;
-        const arcDy = (worldY - bottomY) / rY;
-        const distFromCenter = Math.sqrt(arcDx * arcDx + arcDy * arcDy);
+        const dx = worldX - midX;
+        const dy = worldY - bottomY;
+        const distFromCenter = Math.sqrt(dx * dx + dy * dy);
 
-        const normDist = Math.abs(distFromCenter - 1);
-        const approxPixelDist = normDist * Math.min(rX, rY);
+        const distDiff = Math.abs(distFromCenter - rX);
 
-        if (approxPixelDist < threshold) {
-            return approxPixelDist;
+        if (distDiff < threshold) {
+            return distDiff;
         }
         return null;
     }
@@ -372,9 +370,9 @@ class Renderer {
             this.ctx.lineWidth = 0.5 / k; // keep line width somewhat constant in screen space
             if (this.ctx.lineWidth < 0.1) this.ctx.lineWidth = 0.1;
 
-            // Hoist invariant calculations out of the hot loop
-            const maxR = (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
-            const rYFactor = (bottomY - 20) / maxR;
+            // Instead of squeezing arcs based on max height, keep them strictly circular.
+            // A circle has rY = rX. Because the canvas is scaled uniformly by k,
+            // drawing a circle in world space (rY = rX) means it stays a circle in screen space.
 
             this.visibleArcs.forEach(arc => {
                 const midX = arc.midX;
@@ -398,11 +396,9 @@ class Renderer {
                     this.ctx.strokeStyle = Renderer.getArcColor(arc.distance) + baseAlpha + ')';
                 }
 
-                // Arc height depends on distance, max height is ~70% of available space above axis
-                const rY = rX * rYFactor;
-
+                // Draw as perfect semi-circle
                 this.ctx.beginPath();
-                this.ctx.ellipse(midX, bottomY, rX, Math.max(rY, 1), 0, Math.PI, 0);
+                this.ctx.arc(midX, bottomY, rX, Math.PI, 0);
                 this.ctx.stroke();
 
                 // Reset line width if changed
@@ -509,13 +505,14 @@ class Renderer {
         const threshold = 5 / this.transform.k;
 
         const dy = worldY - bottomY;
-        const D2 = (dy / C) * (dy / C);
+        // Since arcs are now circles, D2 is just dy^2
+        const D2 = dy * dy;
 
         const GRID_SIZE = 50;
         const binWidth = this.width / GRID_SIZE;
         const binHeight = maxR / GRID_SIZE;
 
-        const rxTolerance = threshold / Math.min(1, C) + 2; // +2 for safety
+        const rxTolerance = threshold + 2; // +2 for safety
 
         let closestArc = null;
         let minDistance = Infinity;
@@ -547,17 +544,245 @@ class Renderer {
 
         return closestArc;
     }
+    getChapterAtScreenPosMatrix(mouseX, mouseY) {
+        if (!this.chapterPositions.length) return null;
+        const worldX = (mouseX - this.transform.x) / this.transform.k;
+        const worldY = (mouseY - this.transform.y) / this.transform.k;
+
+        const numChapters = this.chapterPositions.length;
+        const padding = 40;
+        const size = Math.min(this.width, this.height) - padding * 2;
+        const cellSize = size / numChapters;
+        const offsetX = (this.width - size) / 2;
+        const offsetY = (this.height - size) / 2;
+
+        const isXAxis = worldY > offsetY - 20 && worldY < offsetY;
+        const isYAxis = worldX > offsetX - 20 && worldX < offsetX;
+
+        if (isXAxis && worldX >= offsetX && worldX <= offsetX + size) {
+            return Math.floor((worldX - offsetX) / cellSize);
+        }
+        if (isYAxis && worldY >= offsetY && worldY <= offsetY + size) {
+            return Math.floor((worldY - offsetY) / cellSize);
+        }
+
+        if (worldX >= offsetX && worldX <= offsetX + size && worldY >= offsetY && worldY <= offsetY + size) {
+            const col = Math.floor((worldX - offsetX) / cellSize);
+            const row = Math.floor((worldY - offsetY) / cellSize);
+            if (col === row) return col;
+        }
+
+        return null;
+    }
+
+    getArcAtScreenPosMatrix(mouseX, mouseY) {
+        if (!this.visibleArcs || this.visibleArcs.length === 0) return null;
+        const worldX = (mouseX - this.transform.x) / this.transform.k;
+        const worldY = (mouseY - this.transform.y) / this.transform.k;
+
+        const numChapters = this.chapterPositions.length;
+        const padding = 40;
+        const size = Math.min(this.width, this.height) - padding * 2;
+        const cellSize = size / numChapters;
+        const offsetX = (this.width - size) / 2;
+        const offsetY = (this.height - size) / 2;
+
+        if (worldX >= offsetX && worldX <= offsetX + size && worldY >= offsetY && worldY <= offsetY + size) {
+            const col = Math.floor((worldX - offsetX) / cellSize);
+            const row = Math.floor((worldY - offsetY) / cellSize);
+
+            for (let i = 0; i < this.visibleArcs.length; i++) {
+                const arc = this.visibleArcs[i];
+                if ((arc.source === col && arc.target === row) || (arc.source === row && arc.target === col)) {
+                    return arc;
+                }
+            }
+        }
+        return null;
+    }
+
+    getChapterAtScreenPosChord(mouseX, mouseY) {
+        if (!this.chapterPositions.length) return null;
+        const worldX = (mouseX - this.transform.x) / this.transform.k;
+        const worldY = (mouseY - this.transform.y) / this.transform.k;
+
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+        const radius = Math.min(this.width, this.height) / 2 - 60;
+
+        const dx = worldX - centerX;
+        const dy = worldY - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist >= radius && dist <= radius + 20) {
+            let angle = Math.atan2(dy, dx) + Math.PI / 2;
+            if (angle < 0) angle += Math.PI * 2;
+
+            const numChapters = this.chapterPositions.length;
+            const angleStep = (Math.PI * 2) / numChapters;
+            const chapterIdx = Math.floor(angle / angleStep);
+
+            if (chapterIdx >= 0 && chapterIdx < numChapters) {
+                return chapterIdx;
+            }
+        }
+
+        return null;
+    }
+
+    getArcAtScreenPosChord(mouseX, mouseY) {
+        if (!this.visibleArcs || this.visibleArcs.length === 0) return null;
+        const worldX = (mouseX - this.transform.x) / this.transform.k;
+        const worldY = (mouseY - this.transform.y) / this.transform.k;
+
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+        const radius = Math.min(this.width, this.height) / 2 - 60;
+
+        const dx = worldX - centerX;
+        const dy = worldY - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist >= radius) return null;
+
+        const numChapters = this.chapterPositions.length;
+        const angleStep = (Math.PI * 2) / numChapters;
+
+        let closestArc = null;
+        let minDistance = 10 / this.transform.k;
+
+        const coords = new Float32Array(numChapters * 2);
+        for(let i=0; i<numChapters; i++) {
+            const angle = i * angleStep - Math.PI / 2;
+            coords[i*2] = centerX + Math.cos(angle) * radius;
+            coords[i*2+1] = centerY + Math.sin(angle) * radius;
+        }
+
+        for (let i = 0; i < this.visibleArcs.length; i++) {
+            const arc = this.visibleArcs[i];
+            const sx = coords[arc.source*2];
+            const sy = coords[arc.source*2+1];
+            const tx = coords[arc.target*2];
+            const ty = coords[arc.target*2+1];
+
+            const minX = Math.min(sx, tx, centerX) - minDistance;
+            const maxX = Math.max(sx, tx, centerX) + minDistance;
+            const minY = Math.min(sy, ty, centerY) - minDistance;
+            const maxY = Math.max(sy, ty, centerY) + minDistance;
+
+            if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) continue;
+
+            for(let t=0; t<=1; t+=0.1) {
+                const px = (1-t)*(1-t)*sx + 2*(1-t)*t*centerX + t*t*tx;
+                const py = (1-t)*(1-t)*sy + 2*(1-t)*t*centerY + t*t*ty;
+                const distToCurve = Math.sqrt((px-worldX)**2 + (py-worldY)**2);
+                if (distToCurve < minDistance) {
+                    minDistance = distToCurve;
+                    closestArc = arc;
+                }
+            }
+        }
+
+        return closestArc;
+    }
+
+    static geoLocations = [
+        { name: "Jerusalem", x: 0, y: 0, books: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44] },
+        { name: "Rome", x: -250, y: -150, books: [45, 55, 56, 57] },
+        { name: "Corinth", x: -180, y: -100, books: [46, 47] },
+        { name: "Galatia", x: -80, y: -120, books: [48] },
+        { name: "Ephesus", x: -120, y: -90, books: [49, 54, 62, 63, 64] },
+        { name: "Philippi", x: -160, y: -130, books: [50] },
+        { name: "Colossae", x: -100, y: -80, books: [51] },
+        { name: "Thessalonica", x: -170, y: -120, books: [52, 53] },
+        { name: "Babylon", x: 150, y: 20, books: [24, 25, 26, 27, 60] },
+        { name: "Patmos", x: -140, y: -70, books: [66] },
+        { name: "Egypt (Sinai)", x: -50, y: 80, books: [2] }
+    ];
+
     renderMap() {
-        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: [], chapterPositions: [], hoveredChapter: null, pinnedChapter: null, hoveredArc: null, viewMode: 'map' } }); return; }
+        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'map' } }); return; }
         if (!this.ctx) return;
         this.ctx.save();
-        this.ctx.translate(this.transform.x, this.transform.y); this.ctx.scale(this.transform.k, this.transform.k);
-        const cx = this.width / 2; const cy = this.height / 2;
-        this.ctx.fillStyle = '#223344'; this.ctx.fillRect(-this.width, -this.height, this.width*3, this.height*3);
-        this.ctx.fillStyle = '#112211'; this.ctx.beginPath(); this.ctx.moveTo(cx - 200, cy + 200); this.ctx.lineTo(cx - 150, cy); this.ctx.lineTo(cx - 50, cy - 100); this.ctx.lineTo(cx + 100, cy - 120); this.ctx.lineTo(cx + 300, cy + 50); this.ctx.lineTo(cx + 300, cy + 300); this.ctx.lineTo(cx - 200, cy + 300); this.ctx.fill();
-        this.ctx.fillStyle = '#e94560'; this.ctx.beginPath(); this.ctx.arc(cx - 80, cy + 20, 5/this.transform.k, 0, Math.PI*2); this.ctx.fill();
-        this.ctx.fillStyle = '#ffffff'; this.ctx.font = `${12/this.transform.k}px Arial`; this.ctx.fillText("Jerusalem (Mock)", cx - 70, cy + 25);
-        this.ctx.fillStyle = 'rgba(255,255,255,0.7)'; this.ctx.font = `${16/this.transform.k}px Arial`; this.ctx.fillText("Geo-Daten nicht lokal verfügbar.", cx - 150, cy - 150);
+        this.ctx.translate(this.transform.x, this.transform.y);
+        this.ctx.scale(this.transform.k, this.transform.k);
+
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+
+        this.ctx.fillStyle = '#223344';
+        this.ctx.fillRect(-this.width, -this.height, this.width*3, this.height*3);
+
+        this.ctx.fillStyle = '#112211';
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx - 350, cy - 200);
+        this.ctx.lineTo(cx - 100, cy - 250);
+        this.ctx.lineTo(cx + 200, cy - 100);
+        this.ctx.lineTo(cx + 250, cy + 150);
+        this.ctx.lineTo(cx - 50, cy + 200);
+        this.ctx.lineTo(cx - 300, cy + 150);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = '#223344';
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx - 300, cy - 50);
+        this.ctx.lineTo(cx - 100, cy - 50);
+        this.ctx.lineTo(cx - 50, cy + 50);
+        this.ctx.lineTo(cx - 200, cy + 80);
+        this.ctx.fill();
+
+        const focusChapter = this.pinnedChapter !== null ? this.pinnedChapter : this.hoveredChapter;
+        let activeBookId = -1;
+        if (focusChapter !== null && this.data && this.data.chapters && this.data.chapters[focusChapter]) {
+            activeBookId = this.data.chapters[focusChapter].bookId;
+        }
+
+        Renderer.geoLocations.forEach(loc => {
+            const locX = cx + loc.x;
+            const locY = cy + loc.y;
+
+            const isActive = activeBookId !== -1 && loc.books.includes(activeBookId);
+
+            this.ctx.fillStyle = isActive ? '#e94560' : '#88aaaa';
+            this.ctx.beginPath();
+            this.ctx.arc(locX, locY, (isActive ? 8 : 4) / this.transform.k, 0, Math.PI*2);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = isActive ? '#ffffff' : '#aaaaaa';
+            this.ctx.font = `${(isActive ? 16 : 12)/this.transform.k}px Arial`;
+            this.ctx.fillText(loc.name, locX + 10/this.transform.k, locY + 4/this.transform.k);
+
+            if (isActive) {
+                this.ctx.strokeStyle = '#e94560';
+                this.ctx.lineWidth = 1 / this.transform.k;
+                this.ctx.beginPath();
+                this.ctx.arc(locX, locY, 15 / this.transform.k, 0, Math.PI*2);
+                this.ctx.stroke();
+            }
+        });
+
+        if (this.hoveredArc && this.data && this.data.chapters) {
+            const sourceBookId = this.data.chapters[this.hoveredArc.source].bookId;
+            const targetBookId = this.data.chapters[this.hoveredArc.target].bookId;
+
+            const sourceLoc = Renderer.geoLocations.find(l => l.books.includes(sourceBookId));
+            const targetLoc = Renderer.geoLocations.find(l => l.books.includes(targetBookId));
+
+            if (sourceLoc && targetLoc && sourceLoc !== targetLoc) {
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 2 / this.transform.k;
+                this.ctx.setLineDash([5 / this.transform.k, 5 / this.transform.k]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(cx + sourceLoc.x, cy + sourceLoc.y);
+                this.ctx.lineTo(cx + targetLoc.x, cy + targetLoc.y);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+        }
+
+        this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        this.ctx.font = `${14/this.transform.k}px Arial`;
+        this.ctx.fillText("Einfache abstrakte Karte. Wähle ein Kapitel um verknüpfte Orte zu markieren.", cx - 200, cy + 250);
         this.ctx.restore();
     }
     renderMatrix() {

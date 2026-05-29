@@ -91,7 +91,7 @@ function testSpatialIndex() {
                 restore: () => {},
                 translate: () => {},
                 beginPath: () => {},
-                ellipse: () => {},
+                ellipse: () => {}, arc: () => {},
                 stroke: () => {}
             }),
             parentElement: { getBoundingClientRect: () => ({ width: 1000, height: 500 }), insertBefore: () => {} },
@@ -161,7 +161,7 @@ function testGetChapterAtScreenPos() {
                 restore: () => {},
                 translate: () => {},
                 beginPath: () => {},
-                ellipse: () => {},
+                ellipse: () => {}, arc: () => {},
                 stroke: () => {}
             }),
             parentElement: { getBoundingClientRect: () => ({ width: 1000, height: 500 }), insertBefore: () => {} },
@@ -283,7 +283,7 @@ function testGetArcAtScreenPos() {
                 restore: () => {},
                 translate: () => {},
                 beginPath: () => {},
-                ellipse: () => {},
+                ellipse: () => {}, arc: () => {},
                 stroke: () => {}
             }),
             parentElement: { getBoundingClientRect: () => ({ width: 1000, height: 500 }), insertBefore: () => {} },
@@ -377,11 +377,16 @@ function testGetArcAtScreenPos() {
     renderer.chapterPositions = [{ centerX: 100 }, { centerX: 200 }, { centerX: 300 }];
 
     // Simulate real bin structure
-    renderer.spatialMaxR = 50;
+    renderer.spatialMaxR = 500;
 
     renderer.arcSpatialIndex[7] = [];
     // Place both arcs in the same bin
-    renderer.arcSpatialIndex[7][45] = [arc2, arc1];
+    renderer.arcSpatialIndex[7][39] = [arc2, arc1];
+
+    // We adjust the test values to ensure that D2 calculations and bin selection are valid
+    // for the new circular arcs (where rY = rX).
+    // bottomY = (500 - 80) / 1 = 420. worldY = 20, so dy = 20 - 420 = -400.
+    // idealRxMin = ~400. binHeight = 500/50 = 10. binY = 400 / 10 = 40 (so 39-41).
 
     renderer.transform = { x: 0, y: 0, k: 1 };
 
@@ -392,6 +397,17 @@ function testGetArcAtScreenPos() {
 
     // Test with transform (zoom and pan)
     renderer.transform = { x: 50, y: -10, k: 2 };
+
+    // transform.k = 2, transform.x = 50, transform.y = -10
+    // mouseX = 350, mouseY = 30
+    // worldX = (350 - 50) / 2 = 150
+    // worldY = 30 / 2 = 15
+    // bottomY = 420 / 2 = 210
+    // dy = 15 - 210 = -195
+    // idealRxMin = ~195. binHeight = 500/50 = 10. binY = 195/10 = 19.
+
+    renderer.arcSpatialIndex[7][19] = [arc2, arc1];
+
     const transformedHitArc = renderer.getArcAtScreenPos(350, 30);
     assertTest(transformedHitArc === arc1,
         'returned correct arc when zoomed and panned',
