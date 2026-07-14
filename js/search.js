@@ -6,7 +6,9 @@ class Search {
         // Build search map for fast lookup
         data.books.forEach(b => {
             this.booksMap[b.name.toLowerCase()] = b.shortName;
-            this.booksMap[b.nameDE.toLowerCase()] = b.shortName;
+            if (b.nameDE) this.booksMap[b.nameDE.toLowerCase()] = b.shortName;
+            if (b.nameIT) this.booksMap[b.nameIT.toLowerCase()] = b.shortName;
+            if (b.nameFR) this.booksMap[b.nameFR.toLowerCase()] = b.shortName;
             this.booksMap[b.shortName.toLowerCase()] = b.shortName;
         });
     }
@@ -64,4 +66,8 @@ class Search {
         return null;
     }
 }
-window.Search = Search;
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Search;
+} else {
+    window.Search = Search;
+}

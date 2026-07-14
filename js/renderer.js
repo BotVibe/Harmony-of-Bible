@@ -1,7 +1,6 @@
 class Renderer {
     constructor(canvasId, data) {
         this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.data = data;
 
         // Attempt to use OffscreenCanvas for arc rendering background layer
@@ -18,15 +17,26 @@ class Renderer {
             this.canvas.parentElement.insertBefore(this.bgCanvas, this.canvas);
             this.canvas.style.position = 'relative';
             this.canvas.style.zIndex = '1';
-            // Make foreground canvas transparent
-            this.ctx = this.canvas.getContext('2d');
+            // Foreground must be transparent so the worker layer is visible.
+            // Do not call getContext with alpha:false first — attributes are locked on first call.
+            this.ctx = this.canvas.getContext('2d', { alpha: true });
 
             const offscreen = this.bgCanvas.transferControlToOffscreen();
             this.worker = new Worker('js/worker.js');
+            this.worker.onerror = (err) => {
+                console.error('Worker error:', err.message, err.filename, err.lineno);
+            };
+            this.worker.onmessage = (e) => {
+                if (e.data && e.data.type === 'ERROR') {
+                    console.error('Worker runtime error:', e.data.message, e.data.stack);
+                }
+            };
             this.worker.postMessage({
                 type: 'INIT',
                 payload: { canvas: offscreen, data: this.data }
             }, [offscreen]);
+        } else {
+            this.ctx = this.canvas.getContext('2d', { alpha: false });
         }
 
         // State
@@ -57,7 +67,9 @@ class Renderer {
         // Caches
         this.chapterPositions = [];
         this.visibleArcs = [];
-        this.arcPaths = []; // For spatial indexing
+        this.visibleArcIds = new Set();
+        this.matrixArcLookup = new Map(); // "min_max" -> arc for O(1) matrix hit-testing
+        this.chordSpatialIndex = null;
 
         this.renderPending = false;
 
@@ -86,11 +98,13 @@ class Renderer {
         this.width = rect.width;
         this.height = rect.height;
 
-        // Handle high DPI displays
+        // Handle high DPI displays — reset transform so repeated resize does not compound scale
         const dpr = window.devicePixelRatio || 1;
-        this.canvas.width = this.width * dpr;
-        this.canvas.height = this.height * dpr;
-        this.ctx.scale(dpr, dpr);
+        this.canvas.width = Math.max(1, Math.floor(this.width * dpr));
+        this.canvas.height = Math.max(1, Math.floor(this.height * dpr));
+        this.canvas.style.width = this.width + 'px';
+        this.canvas.style.height = this.height + 'px';
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         this.calculatePositions();
         this.requestRender();
@@ -101,7 +115,7 @@ class Renderer {
         this.requestRender();
     }
 
-        setViewMode(mode) {
+    setViewMode(mode) {
         if (this.viewMode !== mode) {
             this.viewMode = mode;
             if (this.ctx) {
@@ -109,6 +123,47 @@ class Renderer {
             }
             this.requestRender();
         }
+    }
+
+    /** Lightweight payload — arcs live in the worker; only send interaction/view state each frame. */
+    postWorkerRender(viewMode) {
+        if (!this.useWorker) return;
+        const hoveredArc = this.hoveredArc
+            ? { source: this.hoveredArc.source, target: this.hoveredArc.target }
+            : null;
+        this.worker.postMessage({
+            type: 'RENDER',
+            payload: {
+                width: this.width,
+                height: this.height,
+                dpr: window.devicePixelRatio || 1,
+                transform: this.transform,
+                hoveredChapter: this.hoveredChapter,
+                pinnedChapter: this.pinnedChapter,
+                hoveredArc,
+                viewMode: viewMode || this.viewMode
+            }
+        });
+    }
+
+    syncWorkerLayout() {
+        if (!this.useWorker) return;
+        this.worker.postMessage({
+            type: 'UPDATE_LAYOUT',
+            payload: { chapterPositions: this.chapterPositions }
+        });
+    }
+
+    syncWorkerVisible() {
+        if (!this.useWorker) return;
+        const indices = new Uint32Array(this.visibleArcs.length);
+        for (let i = 0; i < this.visibleArcs.length; i++) {
+            indices[i] = this.visibleArcs[i].id;
+        }
+        this.worker.postMessage({
+            type: 'SET_VISIBLE',
+            payload: { indices }
+        });
     }
 
     setFilters(filters) {
@@ -168,6 +223,8 @@ class Renderer {
                 arc.rX = Math.abs(p2 - p1) / 2;
             });
         }
+        this.syncWorkerLayout();
+        this.buildChordSpatialIndex();
     }
 
     applyFilters() {
@@ -200,7 +257,20 @@ class Renderer {
 
             return true;
         });
+
+        this.visibleArcIds = new Set(this.visibleArcs.map(a => a.id));
+        this.matrixArcLookup.clear();
+        for (let i = 0; i < this.visibleArcs.length; i++) {
+            const arc = this.visibleArcs[i];
+            const key = arc.source < arc.target
+                ? arc.source + '_' + arc.target
+                : arc.target + '_' + arc.source;
+            this.matrixArcLookup.set(key, arc);
+        }
+
         this.buildSpatialIndex();
+        this.buildChordSpatialIndex();
+        this.syncWorkerVisible();
     }
 
     buildSpatialIndex() {
@@ -226,6 +296,59 @@ class Renderer {
 
             this.arcSpatialIndex[binX][binY].push(arc);
         });
+    }
+
+    /**
+     * Sample quadratic chord curves into a coarse grid so hover doesn't scan all visible arcs.
+     */
+    buildChordSpatialIndex() {
+        if (!this.visibleArcs || !this.width || !this.height) {
+            this.chordSpatialIndex = null;
+            return;
+        }
+
+        const GRID = 40;
+        this.chordSpatialIndex = Array.from({ length: GRID }, () => Array.from({ length: GRID }, () => []));
+        this.chordGridSize = GRID;
+
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+        const radius = Math.min(this.width, this.height) / 2 - 60;
+        const numChapters = this.chapterPositions.length;
+        if (!numChapters) return;
+
+        const angleStep = (Math.PI * 2) / numChapters;
+        const coords = new Float32Array(numChapters * 2);
+        for (let i = 0; i < numChapters; i++) {
+            const angle = i * angleStep - Math.PI / 2;
+            coords[i * 2] = centerX + Math.cos(angle) * radius;
+            coords[i * 2 + 1] = centerY + Math.sin(angle) * radius;
+        }
+        this.chordCoords = coords;
+        this.chordCenterX = centerX;
+        this.chordCenterY = centerY;
+        this.chordRadius = radius;
+
+        for (let i = 0; i < this.visibleArcs.length; i++) {
+            const arc = this.visibleArcs[i];
+            const sx = coords[arc.source * 2];
+            const sy = coords[arc.source * 2 + 1];
+            const tx = coords[arc.target * 2];
+            const ty = coords[arc.target * 2 + 1];
+
+            for (let t = 0; t <= 1; t += 0.1) {
+                const px = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * centerX + t * t * tx;
+                const py = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * centerY + t * t * ty;
+                let gx = Math.floor((px / this.width) * GRID);
+                let gy = Math.floor((py / this.height) * GRID);
+                if (gx < 0) gx = 0;
+                if (gy < 0) gy = 0;
+                if (gx >= GRID) gx = GRID - 1;
+                if (gy >= GRID) gy = GRID - 1;
+                const cell = this.chordSpatialIndex[gx][gy];
+                if (cell[cell.length - 1] !== arc) cell.push(arc);
+            }
+        }
     }
 
     static getBinYBounds(worldX, binX, binWidth, binHeight, D2, rxTolerance, GRID_SIZE) {
@@ -274,42 +397,21 @@ class Renderer {
         return null;
     }
 
-    static colorCache = new Map();
-
     static getArcColor(distance) {
+        if (typeof getArcColor === 'function') {
+            return getArcColor(distance);
+        }
+        // Node/test fallback when shared.js is not loaded via importScripts
         if (typeof distance !== 'number' || isNaN(distance)) {
             return 'hsla(0, 0%, 50%, ';
         }
-
-        // Normalised distance 0 - 1189, handle negative distances
         const validDistance = Math.max(0, distance);
-
-        if (Renderer.colorCache.has(validDistance)) {
-            return Renderer.colorCache.get(validDistance);
-        }
-
         const norm = Math.min(validDistance / 1189, 1);
-
-        // HSL from 270 (Purple) to 0 (Red)
-        // 0-10% -> 270 to 240 (Purple to Blue)
-        // 10-40% -> 240 to 120 (Blue to Green) to 60 (Yellow)
-        // 40-100% -> 60 to 0 (Yellow to Red)
-
         let hue;
-        if (norm < 0.1) {
-            // 0 -> 270, 0.1 -> 240
-            hue = 270 - (norm / 0.1) * 30;
-        } else if (norm < 0.4) {
-            // 0.1 -> 240, 0.4 -> 60
-            hue = 240 - ((norm - 0.1) / 0.3) * 180;
-        } else {
-            // 0.4 -> 60, 1.0 -> 0
-            hue = 60 - ((norm - 0.4) / 0.6) * 60;
-        }
-
-        const colorStr = `hsla(${hue}, 100%, 50%, `;
-        Renderer.colorCache.set(validDistance, colorStr);
-        return colorStr;
+        if (norm < 0.1) hue = 270 - (norm / 0.1) * 30;
+        else if (norm < 0.4) hue = 240 - ((norm - 0.1) / 0.3) * 180;
+        else hue = 60 - ((norm - 0.4) / 0.6) * 60;
+        return `hsla(${hue}, 100%, 50%, `;
     }
 
     render() {
@@ -347,19 +449,7 @@ class Renderer {
         const isHovering = focusChapter !== null || this.hoveredArc !== null;
 
         if (this.useWorker) {
-            this.worker.postMessage({
-                type: 'RENDER',
-                payload: {
-                    width: this.width,
-                    height: this.height,
-                    transform: this.transform,
-                    visibleArcs: this.visibleArcs, viewMode: this.viewMode,
-                    chapterPositions: this.chapterPositions,
-                    hoveredChapter: this.hoveredChapter,
-                    pinnedChapter: this.pinnedChapter,
-                    hoveredArc: this.hoveredArc
-                }
-            });
+            this.postWorkerRender('arc');
         } else {
             // LOD Check
             // If high zoom, we can render thicker lines, lower alpha
@@ -501,7 +591,6 @@ class Renderer {
         if (worldY > bottomY) return null;
 
         const maxR = this.spatialMaxR || (this.chapterPositions[this.chapterPositions.length-1].centerX - this.chapterPositions[0].centerX) / 2;
-        const C = (bottomY - 20) / maxR;
         const threshold = 5 / this.transform.k;
 
         const dy = worldY - bottomY;
@@ -576,7 +665,7 @@ class Renderer {
     }
 
     getArcAtScreenPosMatrix(mouseX, mouseY) {
-        if (!this.visibleArcs || this.visibleArcs.length === 0) return null;
+        if (!this.matrixArcLookup || this.matrixArcLookup.size === 0) return null;
         const worldX = (mouseX - this.transform.x) / this.transform.k;
         const worldY = (mouseY - this.transform.y) / this.transform.k;
 
@@ -590,13 +679,9 @@ class Renderer {
         if (worldX >= offsetX && worldX <= offsetX + size && worldY >= offsetY && worldY <= offsetY + size) {
             const col = Math.floor((worldX - offsetX) / cellSize);
             const row = Math.floor((worldY - offsetY) / cellSize);
-
-            for (let i = 0; i < this.visibleArcs.length; i++) {
-                const arc = this.visibleArcs[i];
-                if ((arc.source === col && arc.target === row) || (arc.source === row && arc.target === col)) {
-                    return arc;
-                }
-            }
+            if (col === row) return null;
+            const key = col < row ? col + '_' + row : row + '_' + col;
+            return this.matrixArcLookup.get(key) || null;
         }
         return null;
     }
@@ -635,35 +720,56 @@ class Renderer {
         const worldX = (mouseX - this.transform.x) / this.transform.k;
         const worldY = (mouseY - this.transform.y) / this.transform.k;
 
-        const centerX = this.width / 2;
-        const centerY = this.height / 2;
-        const radius = Math.min(this.width, this.height) / 2 - 60;
+        const centerX = this.chordCenterX != null ? this.chordCenterX : this.width / 2;
+        const centerY = this.chordCenterY != null ? this.chordCenterY : this.height / 2;
+        const radius = this.chordRadius != null ? this.chordRadius : (Math.min(this.width, this.height) / 2 - 60);
 
         const dx = worldX - centerX;
         const dy = worldY - centerY;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist >= radius) return null;
-
-        const numChapters = this.chapterPositions.length;
-        const angleStep = (Math.PI * 2) / numChapters;
 
         let closestArc = null;
         let minDistance = 10 / this.transform.k;
 
-        const coords = new Float32Array(numChapters * 2);
-        for(let i=0; i<numChapters; i++) {
-            const angle = i * angleStep - Math.PI / 2;
-            coords[i*2] = centerX + Math.cos(angle) * radius;
-            coords[i*2+1] = centerY + Math.sin(angle) * radius;
+        const coords = this.chordCoords;
+        if (!coords) return null;
+
+        // Collect candidate arcs from spatial index neighborhood
+        const candidates = [];
+        const seen = new Set();
+        if (this.chordSpatialIndex) {
+            const GRID = this.chordGridSize;
+            let gx = Math.floor((worldX / this.width) * GRID);
+            let gy = Math.floor((worldY / this.height) * GRID);
+            if (gx < 0) gx = 0;
+            if (gy < 0) gy = 0;
+            if (gx >= GRID) gx = GRID - 1;
+            if (gy >= GRID) gy = GRID - 1;
+
+            for (let x = Math.max(0, gx - 1); x <= Math.min(GRID - 1, gx + 1); x++) {
+                for (let y = Math.max(0, gy - 1); y <= Math.min(GRID - 1, gy + 1); y++) {
+                    const cell = this.chordSpatialIndex[x][y];
+                    for (let i = 0; i < cell.length; i++) {
+                        const arc = cell[i];
+                        if (!seen.has(arc.id)) {
+                            seen.add(arc.id);
+                            candidates.push(arc);
+                        }
+                    }
+                }
+            }
+        } else {
+            for (let i = 0; i < this.visibleArcs.length; i++) candidates.push(this.visibleArcs[i]);
         }
 
-        for (let i = 0; i < this.visibleArcs.length; i++) {
-            const arc = this.visibleArcs[i];
-            const sx = coords[arc.source*2];
-            const sy = coords[arc.source*2+1];
-            const tx = coords[arc.target*2];
-            const ty = coords[arc.target*2+1];
+        for (let i = 0; i < candidates.length; i++) {
+            const arc = candidates[i];
+            const sx = coords[arc.source * 2];
+            const sy = coords[arc.source * 2 + 1];
+            const tx = coords[arc.target * 2];
+            const ty = coords[arc.target * 2 + 1];
 
             const minX = Math.min(sx, tx, centerX) - minDistance;
             const maxX = Math.max(sx, tx, centerX) + minDistance;
@@ -672,10 +778,10 @@ class Renderer {
 
             if (worldX < minX || worldX > maxX || worldY < minY || worldY > maxY) continue;
 
-            for(let t=0; t<=1; t+=0.1) {
-                const px = (1-t)*(1-t)*sx + 2*(1-t)*t*centerX + t*t*tx;
-                const py = (1-t)*(1-t)*sy + 2*(1-t)*t*centerY + t*t*ty;
-                const distToCurve = Math.sqrt((px-worldX)**2 + (py-worldY)**2);
+            for (let t = 0; t <= 1; t += 0.125) {
+                const px = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * centerX + t * t * tx;
+                const py = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * centerY + t * t * ty;
+                const distToCurve = Math.sqrt((px - worldX) ** 2 + (py - worldY) ** 2);
                 if (distToCurve < minDistance) {
                     minDistance = distToCurve;
                     closestArc = arc;
@@ -701,7 +807,7 @@ class Renderer {
     ];
 
     renderMap() {
-        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'map' } }); return; }
+        if (this.useWorker) { this.postWorkerRender('map'); return; }
         if (!this.ctx) return;
         this.ctx.save();
         this.ctx.translate(this.transform.x, this.transform.y);
@@ -786,7 +892,7 @@ class Renderer {
         this.ctx.restore();
     }
     renderMatrix() {
-        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'matrix' } }); return; }
+        if (this.useWorker) { this.postWorkerRender('matrix'); return; }
         if (!this.ctx) return;
         this.ctx.save();
         const numChapters = this.chapterPositions.length; const padding = 40; const size = Math.min(this.width, this.height) - padding * 2; const cellSize = size / numChapters;
@@ -806,7 +912,7 @@ class Renderer {
         this.ctx.restore();
     }
     renderChord() {
-        if (this.useWorker) { this.worker.postMessage({ type: 'RENDER', payload: { width: this.width, height: this.height, transform: this.transform, visibleArcs: this.visibleArcs, chapterPositions: this.chapterPositions, hoveredChapter: this.hoveredChapter, pinnedChapter: this.pinnedChapter, hoveredArc: this.hoveredArc, viewMode: 'chord' } }); return; }
+        if (this.useWorker) { this.postWorkerRender('chord'); return; }
         if (!this.ctx) return;
         this.ctx.save();
         this.ctx.translate(this.transform.x, this.transform.y); this.ctx.scale(this.transform.k, this.transform.k);

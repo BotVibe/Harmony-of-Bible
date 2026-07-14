@@ -8,6 +8,11 @@ class StatsCharts {
         this.renderTimeout = null;
     }
 
+    /**
+     * @param {object} data Full dataset shape: { books, chapters, arcs }
+     * @param {boolean} immediate Skip debounce
+     * Pass a filtered `arcs` array (e.g. renderer.visibleArcs) to chart the active filter set.
+     */
     render(data, immediate = false) {
         if (this.renderTimeout) {
             clearTimeout(this.renderTimeout);

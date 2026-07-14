@@ -1,5 +1,11 @@
 {
-  "dependencies": {
+  "name": "bible-cross-references-viz",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node tests/dataLoader.test.js && node tests/renderer.test.js && node tests/stats.test.js && node tests/search.test.js"
+  },
+  "devDependencies": {
     "playwright": "^1.59.1"
   }
 }

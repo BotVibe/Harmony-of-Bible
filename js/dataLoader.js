@@ -4,13 +4,15 @@ class DataLoader {
         this.chapters = [];
         this.arcs = [];
         this.totalVerses = 0;
-        this.bookShortMap = {};
     }
 
     async loadData(progressCallback) {
         try {
             progressCallback(10, 'Lade Bücher (books.json)...');
             const booksRes = await fetch('data/books.json');
+            if (!booksRes.ok) {
+                throw new Error(`Failed to load books.json (${booksRes.status})`);
+            }
             this.books = await booksRes.json();
 
             // Build chapter flat array
@@ -18,7 +20,6 @@ class DataLoader {
             let verseOffset = 0;
 
             this.books.forEach(book => {
-                this.bookShortMap[book.shortName] = book.id;
                 book.chapters.forEach((ch, idx) => {
                     this.chapters.push({
                         id: chapterId,
@@ -44,6 +45,9 @@ class DataLoader {
 
             progressCallback(40, 'Lade Querverweise (cross_references.txt)...');
             const refsRes = await fetch('data/cross_references.txt');
+            if (!refsRes.ok) {
+                throw new Error(`Failed to load cross_references.txt (${refsRes.status})`);
+            }
             const refsText = await refsRes.text();
 
             progressCallback(70, 'Parse Querverweise...');

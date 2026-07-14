@@ -1,58 +1,55 @@
 # Bible Cross-References Visualization
 
-An interactive, high-performance web application visualizing the 63,779 cross-references in the Bible as a stunning arc diagram. This project is inspired by the original static visualization by Chris Harrison and Christoph Römhild (2007) and makes it fully interactive and explorable.
+An interactive, high-performance web application visualizing the 63,779 cross-references in the Bible as colored arcs (plus matrix, chord, and map views). Inspired by the original static visualization by Chris Harrison and Christoph Römhild (2007).
 
 ## Features
 
 - **Interactive Arc Diagram:** Visualizes 63,779 cross-references as colored arcs bridging chapters of the Bible.
-- **High Performance:** Utilizes HTML5 Canvas, `OffscreenCanvas`, and Web Workers for smooth rendering and zooming even with massive datasets. Level-of-Detail (LOD) rendering ensures crisp visuals at any zoom level.
+- **Alternate Views:** Matrix heatmap, chord diagram, and a lightweight geo overview.
+- **High Performance:** HTML5 Canvas, `OffscreenCanvas`, and Web Workers. Arc data is loaded once into the worker; each frame only sends transform and hover state (not the full arc list). Spatial indexes keep matrix/chord hover responsive.
 - **Explorable:** Pan and zoom across the chapters using mouse controls.
-- **Dynamic Filtering:** Filter by book, testament (Old Testament, New Testament, Cross-Testament), biblical groups (Tora, Prophets, Gospels, etc.), and distance.
-- **Hover Detection:** Hover over any chapter or arc to reveal rich tooltip information, utilizing custom mathematical spatial indexing for precision without heavy quadtree overhead.
-- **Statistics & Analytics:** D3.js powered sidebar charts detailing the Top 10 interconnected books and chapters, plus an AT/NT distribution donut chart.
-- **Bilingual Support:** Switch between German and English book names.
+- **Dynamic Filtering:** Filter by book, testament (OT, NT, cross-testament), biblical groups, and distance. Sidebar statistics update to match the active filter set.
+- **Hover Detection:** Tooltips for chapters and arcs, with spatial indexing for arc hit-testing.
+- **Statistics & Analytics:** D3.js sidebar charts (Top 10 books/chapters, AT/NT donut) plus chapter text via [bible-api.com](https://bible-api.com).
+- **Multilingual UI:** German, English, Italian, and French UI strings (book-name coverage depends on `books.json` fields).
 
 ## Architecture & Tech Stack
 
-- **Frontend Core:** Vanilla JavaScript, HTML5, CSS3. No heavy frameworks (React, Vue, etc.) to keep the bundle small and performance maximal.
-- **Visualization:** `Canvas API` (foreground and background worker layers) + `D3.js v7` (for zooming, panning, and sidebar SVG charts).
-- **Data Generation:** Python scripts parse standard KJV cross-reference datasets into optimized JSON/txt formats.
+- **Frontend Core:** Vanilla JavaScript, HTML5, CSS3. No bundler.
+- **Shared helpers:** `js/shared.js` (arc color) is used by the main thread and imported into the worker via `importScripts`.
+- **Visualization:** Canvas API + D3.js v7 (zoom/pan and sidebar SVG charts).
+- **Supporting modules:** `js/api.js` (chapter text), `js/search.js`, `js/stats.js`, `js/dataLoader.js`.
+- **Data Generation:** `generate_data.py` produces `data/books.json` and `data/cross_references.txt`. Legacy helpers (`parse_data.py`, `parse_books.py`, `parse_to_63k.py`) may exist from earlier pipeline steps.
 
 ## How to Run Locally
 
-Since the application uses Web Workers and fetches data asynchronously, it must be served over an HTTP server.
+Web Workers and `fetch()` require HTTP (not `file://`).
 
-1. Clone the repository.
-2. Start a local server:
-   ```bash
-   python3 -m http.server 8000
-   ```
-   *or using Node:*
-   ```bash
-   npx serve .
-   ```
-3. Open your browser and navigate to `http://localhost:8000`.
+```bash
+npm start
+# or: python3 -m http.server 8000
+```
+
+Open `http://localhost:8000`.
 
 ## Testing
 
-The project includes a Node.js unit test suite for the core visualization logic, data loading, and statistics generation.
-
-To run the full suite of unit tests:
 ```bash
-node tests/dataLoader.test.js && node tests/renderer.test.js && node tests/stats.test.js
+npm test
+# or:
+node tests/dataLoader.test.js && node tests/renderer.test.js && node tests/stats.test.js && node tests/search.test.js
 ```
 
-Visual verification using Playwright is also used when testing UI layout changes in headless environments.
+Visual checks in headless environments use Playwright (`test_hover.js` / ad-hoc screenshots).
 
 ## Deployment
 
-The application is automatically deployed to GitHub Pages via GitHub Actions whenever changes are pushed or merged into the `main` branch.
+GitHub Pages via GitHub Actions on pushes to `main`.
 
 ## Data Structure
 
-The application expects data in the `/data` folder:
-- `books.json`: Metadata for all 66 books, including chapter and verse counts.
-- `cross_references.txt`: A normalized dataset mapping source verses to target verses.
+- `data/books.json`: Metadata for all 66 books (chapters, verses, names).
+- `data/cross_references.txt`: Normalized source→target reference pairs.
 
 ## Acknowledgements
 
