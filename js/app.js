@@ -52,7 +52,15 @@ class App {
                 testamentDistTitle: 'AT / NT Verteilung',
                 chapterDetailsTitle: 'Kapitel Details',
                 connectedChaptersTitle: 'Verbundene Kapitel:',
-                chapterNotFound: 'Kapitel nicht gefunden.'
+                chapterNotFound: 'Kapitel nicht gefunden.',
+                chartsTitle: 'Diagramme',
+                topChaptersTitle: 'Top 10 Kapitel',
+                searchAria: 'Kapitel suchen',
+                langLabel: 'Sprache',
+                viewModeLabel: 'Ansicht',
+                groupLabel: 'Gruppe',
+                sidebarToggleLabel: 'Statistik-Seitenleiste umschalten',
+                canvasLabel: 'Visualisierung der Bibel-Querverweise'
             },
             en: {
                 title: 'Bible Cross-References',
@@ -88,7 +96,15 @@ class App {
                 testamentDistTitle: 'OT / NT Distribution',
                 chapterDetailsTitle: 'Chapter Details',
                 connectedChaptersTitle: 'Connected Chapters:',
-                chapterNotFound: 'Chapter not found.'
+                chapterNotFound: 'Chapter not found.',
+                chartsTitle: 'Charts',
+                topChaptersTitle: 'Top 10 Chapters',
+                searchAria: 'Search chapters',
+                langLabel: 'Language',
+                viewModeLabel: 'View',
+                groupLabel: 'Group',
+                sidebarToggleLabel: 'Toggle statistics sidebar',
+                canvasLabel: 'Bible cross-reference visualization'
             },
             it: {
                 title: 'Riferimenti Incrociati della Bibbia',
@@ -124,7 +140,15 @@ class App {
                 testamentDistTitle: 'Distribuzione AT / NT',
                 chapterDetailsTitle: 'Dettagli Capitolo',
                 connectedChaptersTitle: 'Capitoli Connessi:',
-                chapterNotFound: 'Capitolo non trovato.'
+                chapterNotFound: 'Capitolo non trovato.',
+                chartsTitle: 'Grafici',
+                topChaptersTitle: 'Top 10 Capitoli',
+                searchAria: 'Cerca capitoli',
+                langLabel: 'Lingua',
+                viewModeLabel: 'Vista',
+                groupLabel: 'Gruppo',
+                sidebarToggleLabel: 'Attiva/disattiva barra laterale',
+                canvasLabel: 'Visualizzazione dei riferimenti incrociati della Bibbia'
             },
             fr: {
                 title: 'Références Croisées de la Bible',
@@ -160,14 +184,26 @@ class App {
                 testamentDistTitle: 'Distribution AT / NT',
                 chapterDetailsTitle: 'Détails du Chapitre',
                 connectedChaptersTitle: 'Chapitres Connectés:',
-                chapterNotFound: 'Chapitre non trouvé.'
+                chapterNotFound: 'Chapitre non trouvé.',
+                chartsTitle: 'Graphiques',
+                topChaptersTitle: 'Top 10 Chapitres',
+                searchAria: 'Rechercher des chapitres',
+                langLabel: 'Langue',
+                viewModeLabel: 'Vue',
+                groupLabel: 'Groupe',
+                sidebarToggleLabel: 'Basculer le panneau latéral',
+                canvasLabel: 'Visualisation des références croisées de la Bible'
             }
         };
+
+        this.chapterTextAbort = null;
+        this.distanceFilterTimer = null;
 
         this.updateUIStrings();
 
 
                 document.getElementById('reset-selection').addEventListener('click', () => {
+            if (!this.renderer) return;
             this.renderer.setPinnedChapter(null);
             this.renderer.setHoveredChapter(null);
             this.renderer.setHoveredArc(null);
@@ -176,6 +212,10 @@ class App {
             if(document.querySelector('#acc-stats')) {
                 document.querySelector('#acc-stats .accordion-body').classList.remove('hidden');
                 document.querySelector('#acc-details .accordion-body').classList.add('hidden');
+                const statsHeader = document.getElementById('acc-stats-header');
+                const detailsHeader = document.getElementById('acc-details-header');
+                if (statsHeader) statsHeader.setAttribute('aria-expanded', 'true');
+                if (detailsHeader) detailsHeader.setAttribute('aria-expanded', 'false');
             }
         });
 
@@ -191,21 +231,33 @@ class App {
         const accStats = document.getElementById('acc-stats-header');
         if(accStats) {
             accStats.addEventListener('click', () => {
-                document.querySelector('#acc-stats .accordion-body').classList.toggle('hidden');
+                this.toggleAccordion('acc-stats');
             });
         }
         const accDetails = document.getElementById('acc-details-header');
         if(accDetails) {
             accDetails.addEventListener('click', () => {
-                document.querySelector('#acc-details .accordion-body').classList.toggle('hidden');
+                this.toggleAccordion('acc-details');
             });
         }
 
         this.init();
     }
 
+    toggleAccordion(itemId) {
+        const item = document.getElementById(itemId);
+        if (!item) return;
+        const body = item.querySelector('.accordion-body');
+        const header = item.querySelector('.accordion-header');
+        if (!body || !header) return;
+        const willHide = !body.classList.contains('hidden');
+        body.classList.toggle('hidden');
+        header.setAttribute('aria-expanded', willHide ? 'false' : 'true');
+    }
 
     updateUIStrings() {
+        document.documentElement.lang = this.lang;
+
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (this.translations[this.lang] && this.translations[this.lang][key]) {
@@ -221,6 +273,13 @@ class App {
             const key = el.getAttribute('data-i18n-placeholder');
             if (this.translations[this.lang] && this.translations[this.lang][key]) {
                 el.setAttribute('placeholder', this.translations[this.lang][key]);
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+            const key = el.getAttribute('data-i18n-aria');
+            if (this.translations[this.lang] && this.translations[this.lang][key]) {
+                el.setAttribute('aria-label', this.translations[this.lang][key]);
             }
         });
     }
@@ -246,11 +305,12 @@ class App {
             });
 
             this.loadingOverlay.classList.add('hidden');
+            this.loadingOverlay.setAttribute('aria-busy', 'false');
 
             // Initialize components
             this.renderer = new Renderer('viz-canvas', this.data);
             this.search = new Search(this.data);
-        this.stats = new StatsCharts();
+            this.stats = new StatsCharts();
 
             this.setupUI();
             this.setupInteractivity();
@@ -259,6 +319,7 @@ class App {
         } catch (err) {
             console.error(err);
             this.loadingText.textContent = 'Fehler beim Laden der Daten.';
+            this.loadingOverlay.setAttribute('aria-busy', 'false');
         }
     }
 
@@ -283,15 +344,30 @@ class App {
         const distValue = document.getElementById('distance-value');
         distFilter.addEventListener('input', (e) => {
             distValue.textContent = e.target.value;
-            this.updateFilters({ distance: parseInt(e.target.value) });
+            e.target.setAttribute('aria-valuenow', e.target.value);
+            // Debounce O(N) refilter while dragging the distance slider
+            clearTimeout(this.distanceFilterTimer);
+            this.distanceFilterTimer = setTimeout(() => {
+                this.updateFilters({ distance: parseInt(e.target.value, 10) });
+            }, 100);
+        });
+        distFilter.addEventListener('change', (e) => {
+            clearTimeout(this.distanceFilterTimer);
+            distValue.textContent = e.target.value;
+            e.target.setAttribute('aria-valuenow', e.target.value);
+            this.updateFilters({ distance: parseInt(e.target.value, 10) });
         });
 
         const testButtons = document.querySelectorAll('#testament-filters button');
         testButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                testButtons.forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.updateFilters({ testament: e.target.dataset.filter });
+                testButtons.forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
+                e.currentTarget.classList.add('active');
+                e.currentTarget.setAttribute('aria-pressed', 'true');
+                this.updateFilters({ testament: e.currentTarget.dataset.filter });
             });
         });
 
@@ -305,24 +381,31 @@ class App {
             );
         });
 
+        const runSearch = () => {
+            const searchInput = document.getElementById('search-input');
+            const chapterIdx = this.search.parseQuery(searchInput.value);
+            if (chapterIdx !== null) {
+                this.renderer.setPinnedChapter(chapterIdx);
+                this.updateSidebarForChapter(chapterIdx);
+                this.centerOnChapter(chapterIdx);
+                if (this.sidebar.classList.contains('collapsed')) {
+                    this.sidebar.classList.remove('collapsed');
+                    this.sidebarToggle.textContent = '▶';
+                    this.sidebarToggle.setAttribute('aria-expanded', 'true');
+                }
+                this.hideSearchError();
+            } else {
+                this.showSearchError(this.translations[this.lang].chapterNotFound);
+            }
+        };
+
         const searchInput = document.getElementById('search-input');
         searchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                const chapterIdx = this.search.parseQuery(e.target.value);
-                if (chapterIdx !== null) {
-                    this.renderer.setPinnedChapter(chapterIdx);
-                    this.updateSidebarForChapter(chapterIdx);
-                    this.centerOnChapter(chapterIdx);
-                    if (this.sidebar.classList.contains('collapsed')) {
-                        this.sidebar.classList.remove('collapsed');
-                        this.sidebarToggle.textContent = '▶';
-                    }
-                    this.hideSearchError();
-                } else {
-                    this.showSearchError(this.translations[this.lang].chapterNotFound);
-                }
-            }
+            if (e.key === 'Enter') runSearch();
         });
+
+        const searchBtn = document.getElementById('search-btn');
+        if (searchBtn) searchBtn.addEventListener('click', runSearch);
 
         searchInput.addEventListener('input', () => {
             this.hideSearchError();
@@ -347,15 +430,17 @@ class App {
         });
 
         this.sidebarToggle.addEventListener('click', () => {
-
             this.sidebar.classList.toggle('collapsed');
-            this.sidebarToggle.textContent = this.sidebar.classList.contains('collapsed') ? '◀' : '▶';
+            const collapsed = this.sidebar.classList.contains('collapsed');
+            this.sidebarToggle.textContent = collapsed ? '◀' : '▶';
+            this.sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         });
     }
 
     updateFilters(filters) {
         const count = this.renderer.setFilters(filters);
         document.getElementById('stat-visible-arcs').textContent = count.toLocaleString();
+        this.updateStats(false);
     }
 
     setupInteractivity() {
@@ -423,6 +508,7 @@ class App {
                     if (this.sidebar.classList.contains('collapsed')) {
                         this.sidebar.classList.remove('collapsed');
                         this.sidebarToggle.textContent = '▶';
+                        this.sidebarToggle.setAttribute('aria-expanded', 'true');
                     }
                 }
             }
@@ -523,9 +609,10 @@ class App {
     }
 
     updateStats(immediate = false) {
-        document.getElementById('stat-visible-arcs').textContent = this.data.arcs.length.toLocaleString();
-        // Force immediate render on first load, debounce otherwise
-        this.stats.render(this.data, immediate);
+        const arcs = this.renderer ? this.renderer.visibleArcs : this.data.arcs;
+        document.getElementById('stat-visible-arcs').textContent = arcs.length.toLocaleString();
+        // Charts reflect the active filter set
+        this.stats.render({ books: this.data.books, chapters: this.data.chapters, arcs }, immediate);
     }
 
     showSearchError(message) {
@@ -631,12 +718,21 @@ class App {
             textBox.textContent = 'Loading text...';
             const shortName = ch.shortName;
             if (window.BibleAPI) {
-                window.BibleAPI.fetchChapterText(shortName, ch.chapterNum, this.lang).then(text => {
+                if (this.chapterTextAbort) {
+                    this.chapterTextAbort.abort();
+                }
+                this.chapterTextAbort = new AbortController();
+                const signal = this.chapterTextAbort.signal;
+                window.BibleAPI.fetchChapterText(shortName, ch.chapterNum, this.lang, signal).then(text => {
+                    if (signal.aborted) return;
                     if (text) {
                         textBox.textContent = text;
                     } else {
                         textBox.textContent = 'Text not available for this translation.';
                     }
+                }).catch(err => {
+                    if (err && err.name === 'AbortError') return;
+                    textBox.textContent = 'Text not available for this translation.';
                 });
             }
         }

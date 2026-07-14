@@ -20,19 +20,20 @@
             </div>
             <div class="control-group">
                 <label for="distance-filter" data-i18n="distance">Distanz (Kapitel):</label>
-                <input type="range" id="distance-filter" min="0" max="1189" value="1189">
-                <span id="distance-value">1189</span>
+                <input type="range" id="distance-filter" min="0" max="1189" value="1189" aria-valuemin="0" aria-valuemax="1189" aria-valuenow="1189">
+                <span id="distance-value" aria-live="polite">1189</span>
             </div>
-            <div class="control-group filter-buttons" id="testament-filters">
-                <button data-filter="all" class="active" data-i18n="allTestaments">Alle</button>
-                <button data-filter="ot" data-i18n="onlyOT">Nur AT</button>
-                <button data-filter="nt" data-i18n="onlyNT">Nur NT</button>
-                <button data-filter="cross" data-i18n="crossTestament">AT ↔ NT</button>
+            <div class="control-group filter-buttons" id="testament-filters" role="group" aria-label="Testament">
+                <button type="button" data-filter="all" class="active" aria-pressed="true" data-i18n="allTestaments">Alle</button>
+                <button type="button" data-filter="ot" aria-pressed="false" data-i18n="onlyOT">Nur AT</button>
+                <button type="button" data-filter="nt" aria-pressed="false" data-i18n="onlyNT">Nur NT</button>
+                <button type="button" data-filter="cross" aria-pressed="false" data-i18n="crossTestament">AT ↔ NT</button>
             </div>
-            <div class="control-group filter-buttons" id="group-filters">
+            <div class="control-group">
+                <label for="group-filter" data-i18n="groupLabel">Gruppe</label>
                 <select id="group-filter">
                     <option value="all" data-i18n="allGroups">Alle Gruppen</option>
-                <option value="Tora" data-i18n="tora">Tora</option>
+                    <option value="Tora" data-i18n="tora">Tora</option>
                     <option value="Historische Bücher" data-i18n="historical">Historische Bücher</option>
                     <option value="Poetische Bücher" data-i18n="poetic">Poetische Bücher</option>
                     <option value="Propheten" data-i18n="prophets">Propheten</option>
@@ -42,14 +43,17 @@
                 </select>
             </div>
             <div class="control-group">
-                <input type="text" id="search-input" data-i18n-placeholder="searchPlaceholder" placeholder="Suchen (z.B. Joh 3)">
-                <span id="search-error" class="error-text hidden"></span>
+                <label class="visually-hidden" for="search-input" data-i18n="searchAria">Kapitel suchen</label>
+                <input type="text" id="search-input" data-i18n-placeholder="searchPlaceholder" data-i18n-aria="searchAria" placeholder="Suchen (z.B. Joh 3)" aria-describedby="search-error">
+                <button type="button" id="search-btn" aria-label="Search">⌕</button>
+                <span id="search-error" class="error-text hidden" role="alert" aria-live="assertive"></span>
             </div>
             <div class="control-group">
-                <button id="reset-zoom" data-i18n="resetZoom">Zoom zurücksetzen</button>
-                <button id="reset-selection" data-i18n="resetSelection">Auswahl aufheben</button>
+                <button type="button" id="reset-zoom" data-i18n="resetZoom">Zoom zurücksetzen</button>
+                <button type="button" id="reset-selection" data-i18n="resetSelection">Auswahl aufheben</button>
             </div>
             <div class="control-group">
+                <label for="lang-select" data-i18n="langLabel">Sprache</label>
                 <select id="lang-select">
                     <option value="de">DE</option>
                     <option value="en">EN</option>
@@ -58,9 +62,10 @@
                 </select>
             </div>
             <div class="control-group">
-                <button id="update-data" data-i18n="dataSource">Datenquelle</button>
+                <button type="button" id="update-data" data-i18n="dataSource" title="Open CrossReferences dataset on GitHub">Datenquelle</button>
             </div>
             <div class="control-group">
+                <label for="view-mode-select" data-i18n="viewModeLabel">Ansicht</label>
                 <select id="view-mode-select">
                     <option value="arc" data-i18n="viewArc">Bögen (Arc)</option>
                     <option value="matrix" data-i18n="viewMatrix">Matrix (Heatmap)</option>
@@ -73,17 +78,17 @@
         <!-- Main Visualization Area -->
         <main id="viz-container">
             <!-- Loading Indicator -->
-            <div id="loading-overlay">
-                <div class="spinner"></div>
+            <div id="loading-overlay" role="status" aria-live="polite" aria-busy="true">
+                <div class="spinner" aria-hidden="true"></div>
                 <div id="loading-text" data-i18n="loading">Lade Daten (0%)...</div>
             </div>
 
             <!-- Tooltip -->
-            <div id="tooltip" class="hidden"></div>
+            <div id="tooltip" class="hidden" role="tooltip"></div>
 
             <!-- Legend -->
             <div id="legend">
-                <div class="legend-gradient"></div>
+                <div class="legend-gradient" aria-hidden="true"></div>
                 <div class="legend-labels">
                     <span data-i18n="legendNear">Nah</span>
                     <span data-i18n="legendFar">Weit</span>
@@ -92,53 +97,58 @@
 
             <!-- Canvas wrapper -->
             <div id="canvas-wrapper">
-                <canvas id="viz-canvas"></canvas>
+                <canvas id="viz-canvas" data-i18n-aria="canvasLabel" aria-label="Visualisierung der Bibel-Querverweise" role="img" tabindex="0"></canvas>
             </div>
-        <!-- Sidebar Statistics -->
-        <aside id="sidebar" class="collapsed">
-            <div class="sidebar-toggle" id="sidebar-toggle">◀</div>
-            <div class="sidebar-content">
-                <h2>Statistik</h2>
-                <div class="stat-box">
-                    <div class="stat-label">Sichtbare Querverweise</div>
-                    <div class="stat-value" id="stat-visible-arcs">0</div>
-                </div>
+            <!-- Sidebar Statistics -->
+            <aside id="sidebar" class="collapsed" aria-label="Statistics">
+                <button type="button" class="sidebar-toggle" id="sidebar-toggle" data-i18n-aria="sidebarToggleLabel" aria-label="Statistik-Seitenleiste umschalten" aria-expanded="false" aria-controls="sidebar-content">◀</button>
+                <div class="sidebar-content" id="sidebar-content">
+                    <h2 data-i18n="statsTitle">Statistik</h2>
+                    <div class="stat-box">
+                        <div class="stat-label" data-i18n="visibleArcs">Sichtbare Querverweise</div>
+                        <div class="stat-value" id="stat-visible-arcs" aria-live="polite">0</div>
+                    </div>
 
-                <div class="accordion">
-                    <div class="accordion-item" id="acc-stats">
-                        <div class="accordion-header" id="acc-stats-header">Diagramme <span>▼</span></div>
-                        <div class="accordion-body">
-                            <div class="stat-section">
-                                <h3>Verteilung</h3>
-                                <div id="donut-chart"></div>
-                            </div>
-                            <div class="stat-section">
-                                <h3>Top 10 Bücher</h3>
-                                <div id="top-books-chart"></div>
-                            </div>
-                            <div class="stat-section">
-                                <h3>Top 10 Kapitel</h3>
-                                <div id="top-chapters-chart"></div>
+                    <div class="accordion">
+                        <div class="accordion-item" id="acc-stats">
+                            <button type="button" class="accordion-header" id="acc-stats-header" aria-expanded="true" aria-controls="acc-stats-body">
+                                <span data-i18n="chartsTitle">Diagramme</span> <span aria-hidden="true">▼</span>
+                            </button>
+                            <div class="accordion-body" id="acc-stats-body">
+                                <div class="stat-section">
+                                    <h3 data-i18n="testamentDistTitle">Verteilung</h3>
+                                    <div id="donut-chart" role="img" aria-label="Testament distribution chart"></div>
+                                </div>
+                                <div class="stat-section">
+                                    <h3 data-i18n="topBooksTitle">Top 10 Bücher</h3>
+                                    <div id="top-books-chart" role="img" aria-label="Top books chart"></div>
+                                </div>
+                                <div class="stat-section">
+                                    <h3 data-i18n="topChaptersTitle">Top 10 Kapitel</h3>
+                                    <div id="top-chapters-chart" role="img" aria-label="Top chapters chart"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="accordion-item" id="acc-details">
-                        <div class="accordion-header" id="acc-details-header"><span data-i18n="chapterDetailsTitle">Kapitel Details</span> <span>▼</span></div>
-                        <div class="accordion-body hidden" id="acc-details-body">
-                            <div class="chapter-details" id="chapter-details">
-                                <div id="chapter-info"></div>
-                                <div id="chapter-text" class="bible-text-box"></div>
-                                <ul id="chapter-links-list"></ul>
+                        <div class="accordion-item" id="acc-details">
+                            <button type="button" class="accordion-header" id="acc-details-header" aria-expanded="false" aria-controls="acc-details-body">
+                                <span data-i18n="chapterDetailsTitle">Kapitel Details</span> <span aria-hidden="true">▼</span>
+                            </button>
+                            <div class="accordion-body hidden" id="acc-details-body">
+                                <div class="chapter-details" id="chapter-details">
+                                    <div id="chapter-info"></div>
+                                    <div id="chapter-text" class="bible-text-box"></div>
+                                    <ul id="chapter-links-list"></ul>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </aside>
+            </aside>
         </main>
     </div>
 
     <!-- Scripts -->
+    <script src="js/shared.js"></script>
     <script src="js/dataLoader.js"></script>
     <script src="js/api.js"></script>
     <script src="js/search.js"></script>

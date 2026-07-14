@@ -1,3 +1,4 @@
+require('../js/shared.js');
 const Renderer = require('../js/renderer.js');
 
 // Mock requestAnimationFrame for tests
