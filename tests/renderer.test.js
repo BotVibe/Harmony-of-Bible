@@ -86,6 +86,7 @@ function testSpatialIndex() {
         getElementById: () => ({
             getContext: () => ({
                 scale: () => {},
+                setTransform: () => {},
                 fillRect: () => {},
                 clearRect: () => {},
                 save: () => {},
@@ -156,6 +157,7 @@ function testGetChapterAtScreenPos() {
         getElementById: () => ({
             getContext: () => ({
                 scale: () => {},
+                setTransform: () => {},
                 fillRect: () => {},
                 clearRect: () => {},
                 save: () => {},
@@ -278,6 +280,7 @@ function testGetArcAtScreenPos() {
         getElementById: () => ({
             getContext: () => ({
                 scale: () => {},
+                setTransform: () => {},
                 fillRect: () => {},
                 clearRect: () => {},
                 save: () => {},

@@ -1,6 +1,18 @@
 importScripts('shared.js');
 
 self.onmessage = function(e) {
+    try {
+        handleMessage(e);
+    } catch (err) {
+        self.postMessage({
+            type: 'ERROR',
+            message: String(err && err.message ? err.message : err),
+            stack: err && err.stack ? String(err.stack) : null
+        });
+    }
+};
+
+function handleMessage(e) {
     const { type, payload } = e.data;
 
     if (type === 'INIT') {

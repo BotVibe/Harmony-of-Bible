@@ -1,7 +1,6 @@
 class Renderer {
     constructor(canvasId, data) {
         this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.data = data;
 
         // Attempt to use OffscreenCanvas for arc rendering background layer
@@ -18,15 +17,26 @@ class Renderer {
             this.canvas.parentElement.insertBefore(this.bgCanvas, this.canvas);
             this.canvas.style.position = 'relative';
             this.canvas.style.zIndex = '1';
-            // Make foreground canvas transparent
-            this.ctx = this.canvas.getContext('2d');
+            // Foreground must be transparent so the worker layer is visible.
+            // Do not call getContext with alpha:false first — attributes are locked on first call.
+            this.ctx = this.canvas.getContext('2d', { alpha: true });
 
             const offscreen = this.bgCanvas.transferControlToOffscreen();
             this.worker = new Worker('js/worker.js');
+            this.worker.onerror = (err) => {
+                console.error('Worker error:', err.message, err.filename, err.lineno);
+            };
+            this.worker.onmessage = (e) => {
+                if (e.data && e.data.type === 'ERROR') {
+                    console.error('Worker runtime error:', e.data.message, e.data.stack);
+                }
+            };
             this.worker.postMessage({
                 type: 'INIT',
                 payload: { canvas: offscreen, data: this.data }
             }, [offscreen]);
+        } else {
+            this.ctx = this.canvas.getContext('2d', { alpha: false });
         }
 
         // State
