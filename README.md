@@ -44,7 +44,11 @@ Visual checks in headless environments use Playwright (`test_hover.js` / ad-hoc 
 
 ## Deployment
 
-GitHub Pages via GitHub Actions on pushes to `main`.
+Production: **https://hob.rosentreter.site**. GitHub Pages is no longer used.
+
+- `.github/workflows/docker-publish.yml` builds the root `Dockerfile` on every PR (build only) and pushes `ghcr.io/botvibe/harmony-of-bible:main` (+ `sha-<short>`) on every push to `main`. `.github/workflows/test.yml` runs `npm test`.
+- The image is nginx serving `index.html`, `css/`, `js/`, `data/books.json` and `data/cross_references.txt`, with a `/healthz` endpoint (Docker `HEALTHCHECK`) and an `X-App-Revision` header carrying the commit SHA (also the `org.opencontainers.image.revision` label).
+- `deploy/compose.yml` runs the container read-only on the shared external `web` network without host ports; the shared Caddy proxy terminates TLS.
 
 ## Data Structure
 
