@@ -41,3 +41,8 @@ This repository contains an interactive visualization of 63,779 Bible cross-refe
 - **Updating the UI Layout:** Edit `index.html` and `css/style.css`.
 - **Modifying the Visualization Logic (Arcs/Bars/Zoom):** Edit `js/renderer.js` and `js/worker.js` (and `js/shared.js` for shared draw helpers).
 - **Modifying Interaction/Hover logic:** Update `handleMouseMove` in `js/app.js` and the hit-testing logic in `js/renderer.js`.
+
+## Deployment
+- Production: https://hob.rosentreter.site — `ghcr.io/botvibe/harmony-of-bible:main` (built by `.github/workflows/docker-publish.yml`) via `deploy/compose.yml` behind the shared Caddy proxy. GitHub Pages is shut down; do not re-add a Pages workflow.
+- The `Dockerfile` copies only runtime files. If the app starts loading a new file/folder, add it to the `Dockerfile` COPY list.
+- `nginx.conf`: keep `/healthz` and the `X-App-Revision` header (`__APP_REVISION__` replaced at build). Do not add COEP/COOP while D3 is loaded from d3js.org.

@@ -1,0 +1,25 @@
+# Harmony of Bible behind the shared Caddy reverse proxy on the `web` network.
+# Static site (nginx); no env vars, no volumes, no uploads.
+# No host ports are published — TLS and routing live on the proxy.
+#
+#   docker network create web   # once, if it does not exist
+#   cd deploy && docker compose pull && docker compose up -d
+#
+# Point Caddy at container `harmony-of-bible:80`.
+
+services:
+  harmony-of-bible:
+    image: ghcr.io/botvibe/harmony-of-bible:main
+    container_name: harmony-of-bible
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
